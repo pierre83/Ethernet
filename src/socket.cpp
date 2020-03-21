@@ -282,7 +282,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 			SPI.endTransaction();
 			return 1;	// Correct state achieved
 		}
-		if ( (status == SnSR::CLOSED) || (W5100.readSnIR(s) == SnIR::TIMEOUT) ) break;
+		if ( status == SnSR::CLOSED ) break;		// 21-03-2020 suppression verification timeout
 		yield();
 	}
 	SPI.endTransaction();
@@ -499,9 +499,9 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 	int ret = len;
 	
 	// Verify and try to have available buffer size greater/equal than the requested write size
-	if ( ret > (int)state[s].TX_FSR ) { // check size not to exceed available buffer size.
-		if (ret > (int)W5100.SSIZE) { // check size not to exceed MAX buffer size.
-			ret = W5100.SSIZE;	// Send truncated datas => better use LARGE_BUFFERS
+	if ( len > state[s].TX_FSR ) { // check size not to exceed available buffer size.
+		if (len > W5100.SSIZE) { // check size not to exceed MAX buffer size.
+			ret = W5100.SSIZE;	// Send truncated datas => use LARGE_BUFFERS ?
 		}
 		int freesize;
 		stopWait = micros() + W5x00_FSR_TIMEOUT ;
