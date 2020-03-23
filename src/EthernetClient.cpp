@@ -29,7 +29,7 @@
 
 // ****************************************************************************
 // Connect to a host name, use DNS to request IP address
-// Returns 0= fail , 1= success, -x= DNS error code
+// Returns 0= fail , 1= success, -x= DNS error code(-1 to -8)
 // ****************************************************************************
 int EthernetClient::connect(const char * host, uint16_t port)
 {
@@ -44,23 +44,23 @@ int EthernetClient::connect(const char * host, uint16_t port)
 
 // ****************************************************************************
 // Connect to a XXX.XXX.XXX.XXX IP address
-// Returns 0= fail , 1= success, -1= already connected
+// Returns 0= fail , 1= success, 2= already connected, -11= bad @IP, -12= no socket
 // ****************************************************************************
 int EthernetClient::connect(IPAddress ip, uint16_t port)
 {
 	// Check for 'valid' IP address
-	if (ip == IPAddress((uint32_t)0) || ip == IPAddress(0xFFFFFFFFul)) return 0;
+	if (ip == IPAddress((uint32_t)0) || ip == IPAddress(0xFFFFFFFFul)) return -11;
 	// This socket should be closed by the W5x00, or the sketch called it twice...
 	if (sockindex < MAX_SOCK_NUM) {
 		// The sketch must take the appropriate action in this case
-		if (Ethernet.socketStatus(sockindex) == SnSR::ESTABLISHED ) return -1;
+		if (Ethernet.socketStatus(sockindex) == SnSR::ESTABLISHED ) return 2;
 		// Any other status is not "normal"
 		Ethernet.socketClose(sockindex);
 	}
 	// Ask for a new socket
 	sockindex = Ethernet.socketBegin(SnMR::TCP, 0);
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	// Ask to connect the socket to the remote end
+	if (sockindex >= MAX_SOCK_NUM) return -12;
+	// Connect to the remote end
 	return Ethernet.socketConnect(sockindex, rawIPAddress(ip), port);
 }
 

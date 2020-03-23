@@ -149,17 +149,18 @@ public:
   inline void setIPAddress(const uint8_t * addr) { writeSIPR(addr); }
   inline void getIPAddress(uint8_t * addr) { readSIPR(addr); }
 
-  inline void setRetransmissionTime(uint16_t timeout) { writeRTR(timeout); }
-  inline void setRetransmissionCount(uint8_t retry) { writeRCR(retry); }
+  static void setRetransmissionTime(uint16_t timeout);
+  static void setRetransmissionCount(uint8_t retry);
 
   static void execCmdSn(SOCKET s, SockCMD _cmd);
 
-  // INTERRUPTS
-  static void enableSocketsInterrupt(uint8_t count) { writeSIMR(count); }
+  // General INTERRUPTS
+  //static void enableSocketsInterrupt(uint8_t count) { writeSIMR(count); }
   // Clear the general socket interrupt register
-  static void clearSocketsInterrupt(uint8_t value) { writeSIR(value); }
+  static void clearSocketsInterrupt(uint8_t value);
   // Return the general socket interrupt register
-  static uint8_t getSocketsInterrupt() { return readSIR(); }
+  static uint8_t getSocketsInterrupt();
+  // Socket interrupt
   // Clear the socket interrupt register
   static void clearSocketInterrupt(uint8_t s, uint8_t value) { writeSnIR(s, value); }
   // Return the socket's interrupt register
@@ -211,28 +212,32 @@ public:
   static W5100Linkstatus getLinkStatus();
 
 public:
-  __GP_REGISTER8 (MR,     0x0000);    // Mode
-  __GP_REGISTER_N(GAR,    0x0001, 4); // Gateway IP address
-  __GP_REGISTER_N(SUBR,   0x0005, 4); // Subnet mask address
-  __GP_REGISTER_N(SHAR,   0x0009, 6); // Source MAC address
-  __GP_REGISTER_N(SIPR,   0x000F, 4); // Source IP address
-  __GP_REGISTER8 (IR,     0x0015);    // Interrupt
-  __GP_REGISTER8 (IMR,    0x0016);    // Interrupt Mask
-  __GP_REGISTER8 (SIR,    0x0017);    // Sockets Interrupt		// Which socket raised an interrupt
-  __GP_REGISTER8 (SIMR,   0x0018);    // Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
-  __GP_REGISTER16(RTR,    0x0019);    // Timeout address
-  __GP_REGISTER8 (RCR,    0x001B);    // Retry count
-  __GP_REGISTER8 (RMSR,   0x001A);    // Receive memory size (W5100 only)
-  __GP_REGISTER8 (TMSR,   0x001B);    // Transmit memory size (W5100 only)
-  __GP_REGISTER8 (PATR,   0x001C);    // Authentication type address in PPPoE mode
-  __GP_REGISTER8 (PTIMER, 0x0028);    // PPP LCP Request Timer
-  __GP_REGISTER8 (PMAGIC, 0x0029);    // PPP LCP Magic Number
-  __GP_REGISTER_N(UIPR,   0x002A, 4); // Unreachable IP address in UDP mode (W5100 only)
-  __GP_REGISTER16(UPORT,  0x002E);    // Unreachable Port address in UDP mode (W5100 only)
-  __GP_REGISTER8 (VERSIONR_W5200,0x001F);   // Chip Version Register (W5200 only)
-  __GP_REGISTER8 (VERSIONR_W5500,0x0039);   // Chip Version Register (W5500 only)
-  __GP_REGISTER8 (PSTATUS_W5200,     0x0035);    // PHY Status
-  __GP_REGISTER8 (PHYCFGR_W5500,     0x002E);    // PHY Configuration register, default: 10111xxx
+  __GP_REGISTER8 (MR,     0x0000);		// Mode
+  __GP_REGISTER_N(GAR,    0x0001, 4);	// Gateway IP address
+  __GP_REGISTER_N(SUBR,   0x0005, 4);	// Subnet mask address
+  __GP_REGISTER_N(SHAR,   0x0009, 6);	// Source MAC address
+  __GP_REGISTER_N(SIPR,   0x000F, 4);	// Source IP address
+  __GP_REGISTER8 (IR,     0x0015);		// Interrupt
+  __GP_REGISTER8 (IMR,    0x0016);    	// Interrupt Mask
+  __GP_REGISTER16(RTR_W5x,    0x0017);	// W5100 & W5200: Timeout address
+  __GP_REGISTER8 (RCR_W5x,    0x0019);	// W5100 & W5200: Retry count
+  __GP_REGISTER8 (SIR_W55,    0x0017);	// W5500: Sockets Interrupt		// Which socket raised an interrupt
+  __GP_REGISTER8 (SIMR_W55,   0x0018);	// W5500: Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
+  __GP_REGISTER8 (SIR_W52, 0x0034);		// W5200: Sockets Interrupt		// Which socket raised an interrupt
+  __GP_REGISTER8 (SIMR_W52,0x0036);		// W5200: Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
+  __GP_REGISTER16(RTR_W55,    0x0019);	// W5500: Timeout address
+  __GP_REGISTER8 (RCR_W55,    0x001B);	// W5500: Retry count
+  __GP_REGISTER8 (RMSR,   0x001A);		// W5100: Receive memory size
+  __GP_REGISTER8 (TMSR,   0x001B);		// W5100: Transmit memory size
+  __GP_REGISTER8 (PATR,   0x001C);		// Authentication type address in PPPoE mode
+  __GP_REGISTER8 (PTIMER, 0x0028);		// PPP LCP Request Timer
+  __GP_REGISTER8 (PMAGIC, 0x0029);		// PPP LCP Magic Number
+  __GP_REGISTER_N(UIPR,   0x002A, 4);	// W5100: Unreachable IP address in UDP mode
+  __GP_REGISTER16(UPORT,  0x002E);		// W5100: Unreachable Port address in UDP mode
+  __GP_REGISTER8 (VERSIONR_W5200, 0x001F);   // W5200: Chip Version Register
+  __GP_REGISTER8 (VERSIONR_W5500, 0x0039);   // W5500: Chip Version Register
+  __GP_REGISTER8 (PSTATUS_W5200, 0x0035);    // W5200: PHY Status
+  __GP_REGISTER8 (PHYCFGR_W5500, 0x002E);    // W5500: PHY Configuration register, default: 10111xxx
 
 
 #undef __GP_REGISTER8
@@ -324,11 +329,13 @@ private:
   static uint8_t isW5500(void);
 
   static uint8_t maxindex;
+  static uint16_t W5x00_RTR_RCR_TIME;
   static bool OffsetAddressMapping;
   
 public:
 	static uint8_t getChip(void) { return chip; }
 	static uint8_t getMaxSocket(void) { return maxindex; }
+	static uint16_t getW5x00Timeout(void) { return W5x00_RTR_RCR_TIME; }
 	static bool hasOffsetAddressMapping(void) { return OffsetAddressMapping; }
 	
 #ifdef ETHERNET_LARGE_BUFFERS

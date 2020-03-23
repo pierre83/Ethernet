@@ -38,13 +38,13 @@ extern void yield(void);
 #endif
 
 
-const uint16_t UPDATE_Sn_RX_RD_THRESHOLD	= 700;	// Threshold used to retrieve real values and update sockstate values
+const uint16_t UPDATE_SOCKETSTATE_THRESHOLD	= 700;	// Threshold used to retrieve real values and update sockstate values
 const uint16_t SOCKET_LISTEN_TIMEOUT		= 1000;	// (ms) Max time for the socket to pass from INIT to LISTEN mode 
 const uint16_t SOCKET_INIT_TIMEOUT			= 100;	// (ms) Max time for the socket to pass from CLOSE to INIT/UDP/IPRAW/MACRAW mode 
 
-// Values retrieved from RTR & RCR (Retry Time and Retry Count Registers) configuration
-// Following DS, this is the ARPto (default values of RTR & RCR), TCPto = 31.8 secondes
-uint16_t W5x00_RTR_RCR_TIMEOUT		= 2000;	// Retrieved from RTR (Retry Time-value Register) x RCR 
+// Values retrieved from RTR (Retry Time-value Register) configuration
+const uint16_t W5x00_TX_TIMEOUT				= 2000;	// W5x00 sendUDP timeout= 1618ms(wx5500 measured), see RTR (Retry Time-value Register)
+const uint16_t SOCKET_CONNECT_TIMEOUT		= 2500;	// (ms) Max time for the socket to pass from INIT to ESTABLISHED mode, see RTR
 
 
 uint16_t EthernetClass::outputPort[MAX_SOCK_NUM];
@@ -204,8 +204,6 @@ makesocket:
 	state[s].RX_inc	= 0;
 	state[s].TX_FSR	= W5100.SSIZE;		// Buffer size
 	//Serial.printf("W5000socket prot=%u, port=%u\n", protocol, localPort);
-	W5x00_RTR_RCR_TIMEOUT = W5100.getW5x00Timeout();		// Be carefull if RTR or RCR changed !
-	//Serial.print("W5x00_RTR_RCR_TIMEOUT: "); Serial.println(W5x00_RTR_RCR_TIMEOUT);
 	return s;
 }
 
@@ -282,7 +280,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 	// 3. When a RST packet is received instead of a SYN/ACK packet.
 	// In these cases, Sn_SR is changed to SOCK_CLOSED.
 	uint8_t status = 0;
-	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
+	uint32_t stopWait = millis() + SOCKET_CONNECT_TIMEOUT;
 	while( millis() < stopWait ) {
 		status = W5100.readSnSR(s);
 		if ( status == SnSR::ESTABLISHED ) {
@@ -295,7 +293,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 	}
 	SPI.endTransaction();
 #if 0
-	uint32_t fail = millis() - (stopWait - W5x00_RTR_RCR_TIMEOUT);
+	uint32_t fail = millis() - (stopWait - SOCKET_CONNECT_TIMEOUT);
 	Serial.print("Fail: "); Serial.print(fail); Serial.println("ms");
 	Serial.print("SnIR: "); Serial.println(W5100.readSnIR(s));
 	Serial.print("SnSR: "); Serial.println(status);
@@ -407,8 +405,8 @@ int EthernetClass::socketRecv(uint8_t s, uint8_t *buf, uint16_t len)
 	state[s].RX_RSR -= ret;
 	// Increase RX_inc with bytes read
 	state[s].RX_inc += ret;
-	// update Sn_RX_RD only if state[s].RX_inc > UPDATE_Sn_RX_RD_THRESHOLD or no more data avalaible for read
-	if ( state[s].RX_inc > UPDATE_Sn_RX_RD_THRESHOLD || state[s].RX_RSR == 0) {
+	// update Sn_RX_RD only if state[s].RX_inc > UPDATE_SOCKETSTATE_THRESHOLD or no more data avalaible for read
+	if ( state[s].RX_inc > UPDATE_SOCKETSTATE_THRESHOLD || state[s].RX_RSR == 0) {
 		state[s].RX_inc = 0;
 		W5100.writeSnRX_RD(s, state[s].RX_RD);		// Socket n RX Read Pointer
 		W5100.execCmdSn(s, Sock_RECV);		//  RECV command is for notifying the updated Sn_RX_RD to W5x00
@@ -541,7 +539,7 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 	write_data(s, 0, (uint8_t *)buf, ret);	// copy data
 	W5100.execCmdSn(s, Sock_SEND);			// send data
 
-	stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
+	stopWait = millis() + W5x00_TX_TIMEOUT;
 	// Wait for operation complete
 	while (1) {
 		uint8_t status = W5100.readSnIR(s);
@@ -569,7 +567,7 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 	}
 	SPI.endTransaction();
 #if 0
-	uint32_t elapsed = millis() - (stopWait-W5x00_RTR_RCR_TIMEOUT);
+	uint32_t elapsed = millis() - (stopWait-W5x00_TX_TIMEOUT);
 	if ( ret == 0 )  Serial.printf("send timeout: %lums", elapsed);
 	if ( ret == -1 ) Serial.printf("W5x00 frozen? %lums", elapsed);
 #endif
@@ -587,7 +585,7 @@ int EthernetClass::socketSendAvailable(uint8_t s)
 	uint8_t status = W5100.readSnSR(s);
 	if ((status == SnSR::ESTABLISHED) || (status == SnSR::CLOSE_WAIT) || (status == SnSR::UDP)) {
 		uint16_t freesize = state[s].TX_FSR;
-		if ( freesize < UPDATE_Sn_RX_RD_THRESHOLD ) {	// Let enough room to send something
+		if ( freesize < UPDATE_SOCKETSTATE_THRESHOLD ) {	// Let enough room to send something
 			freesize = getSnTX_FSR(s);	// = update state[s].TX_FSR
 		}
 		SPI.endTransaction();
@@ -651,7 +649,7 @@ int EthernetClass::socketSendUDP(uint8_t s)
 
 	// Wait for op complete
 	int ret = -1;		// W5x00 issue
-	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
+	uint32_t stopWait = millis() + W5x00_TX_TIMEOUT;
 	while (millis() < stopWait ) {			// W5x00 issue
 		uint8_t status = W5100.readSnIR(s);
 		if ( ( status & SnIR::SEND_OK ) == SnIR::SEND_OK ) {
@@ -675,7 +673,7 @@ int EthernetClass::socketSendUDP(uint8_t s)
 	getSnTX_FSR(s);  // => update state[s].TX_FSR
 	SPI.endTransaction();
 #if 0
-	uint32_t elapsed = millis() - (stopWait - W5x00_RTR_RCR_TIMEOUT);
+	uint32_t elapsed = millis() - (stopWait - W5x00_TX_TIMEOUT);
 	if ( ret == -1 ) Serial.printf("W5x00 issue: %lums", elapsed);
 	if ( ret == 0 )  Serial.printf("sendUDP timeout: %lums", elapsed);
 #endif

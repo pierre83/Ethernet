@@ -140,7 +140,7 @@ void EthernetClass::init(uint8_t sspin)
 EthernetLinkStatus EthernetClass::linkStatus()
 {
 	switch (W5100.getLinkStatus(LINK)) {
-		case UNKNOWN:  return Unknown;
+		//case UNKNOWN:  return Unknown;
 		case LINK_ON:  return LinkON;
 		case LINK_OFF: return LinkOFF;
 		default:       return Unknown;
@@ -150,7 +150,7 @@ EthernetLinkStatus EthernetClass::linkStatus()
 EthernetLinkStatus EthernetClass::linkSpeed()
 {
 	switch (W5100.getLinkStatus(SPEED)) {
-		case UNKNOWN:	return Unknown;
+		//case UNKNOWN:	return Unknown;
 		case MBS_10:	return Mbs10;
 		case MBS_100:	return Mbs100;
 		default:		return Unknown;
@@ -160,7 +160,7 @@ EthernetLinkStatus EthernetClass::linkSpeed()
 EthernetLinkStatus EthernetClass::linkDuplex()
 {
 	switch (W5100.getLinkStatus(DUPLEX)) {
-		case UNKNOWN:		return Unknown;
+		//case UNKNOWN:		return Unknown;
 		case HALF_DUPLEX:	return HalfDuplex;
 		case FULL_DUPLEX:	return FullDuplex;
 		default:			return Unknown;

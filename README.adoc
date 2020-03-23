@@ -114,23 +114,23 @@ Interrupt management:
 ---------------------
 1.Enable global interrupts, count bits represent interrupts from 7...0, (1 enabling it)
 
-  static void enableSocketsInterrupt(uint8_t count) { writeSIMR(count); }
+  ENABLE_INTERRUPTS
   
 2.Clear the general socket interrupt register
 
-  static void clearSocketsInterrupt(uint8_t value) { writeSIR(value); }
+  static void clearSocketsInterrupt(uint8_t value)
   
 3.Read the general socket interrupt register
 
-  static uint8_t getSocketsInterrupt() { return readSIR(); }
+  static uint8_t getSocketsInterrupt()
   
 4.Clear the socket interrupt register
 
-  static void clearSocketInterrupt(uint8_t s, uint8_t value) { writeSnIR(s, value); }
+  static void clearSocketInterrupt(uint8_t s, uint8_t value)
   
 5.Return the socket's interrupt register
 
-  static uint8_t getSocketInterrupt(uint8_t s) { return readSnIR(s); }
+  static uint8_t getSocketInterrupt(uint8_t s)
   
   
 Tools:

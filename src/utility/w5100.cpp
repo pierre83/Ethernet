@@ -56,8 +56,9 @@ uint8_t  W5100Class::chip = 0;
 uint8_t  W5100Class::CH_BASE_MSB;
 uint8_t  W5100Class::ss_pin = SS_PIN_DEFAULT;
 //////////////////////////////////////////////////////////
-uint8_t  W5100Class::maxindex = 0;
-bool	 W5100Class::OffsetAddressMapping = false;
+uint8_t   W5100Class::maxindex = 0;
+uint16_t  W5100Class::W5x00_RTR_RCR_TIME = 0;
+bool	  W5100Class::OffsetAddressMapping = false;
 
 #ifdef ETHERNET_LARGE_BUFFERS
 uint16_t W5100Class::SSIZE = 2048;
@@ -121,6 +122,11 @@ uint8_t W5100Class::init(void)
 	// where it won't recover, unless given a reset pulse.
 	if (isW5200()) {
 		CH_BASE_MSB = 0x40;
+		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
+#ifdef ENABLE_INTERRUPTS
+		writeSIR_W52(0xFF);		// enable all sockets interrupt
+		writeSIMR_W52(0xF0);
+#endif
 #ifdef ETHERNET_LARGE_BUFFERS
 		uint8_t i;
 #if MAX_SOCK_NUM <= 1
@@ -148,9 +154,10 @@ uint8_t W5100Class::init(void)
 	} else if (isW5500()) {
 		CH_BASE_MSB = 0x10;
 		OffsetAddressMapping = true;
+		W5x00_RTR_RCR_TIME = (readRTR_W55() * (1 + readRCR_W55()) ) / 9;
 #ifdef ENABLE_INTERRUPTS
-		enableSocketInterrupt(0xFF);		// enable all sockets interrupt
-		interruptMask(0xF0);
+		writeSIR_W55(0xFF);		// enable all sockets interrupt
+		writeSIMR_W55(0xF0);
 #endif
 #ifdef ETHERNET_LARGE_BUFFERS
 		uint8_t i;
@@ -180,6 +187,7 @@ uint8_t W5100Class::init(void)
 	// register for identification, so we check this last.
 	} else if (isW5100()) {
 		CH_BASE_MSB = 0x04;
+		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
 #ifdef ETHERNET_LARGE_BUFFERS
 #if MAX_SOCK_NUM <= 1
 		SSIZE = 8192;
@@ -205,6 +213,7 @@ uint8_t W5100Class::init(void)
 		chip = 0;
 		maxindex = 0;
 	}
+
 	SPI.endTransaction();
 	return chip; // init result
 }
@@ -281,6 +290,44 @@ uint8_t W5100Class::isW5500(void)
 	return 1;
 }
 
+uint8_t W5100Class::getSocketsInterrupt()
+{ 
+	if ( chip == 55 ) return readSIR_W55();
+	if ( chip == 52 ) return readSIR_W52(); 
+ 	return 0;
+}
+
+void W5100Class::clearSocketsInterrupt(uint8_t value)
+{
+	if ( chip == 55 ) writeSIR_W55(value); 
+	else if ( chip == 52 ) writeSIR_W52(value); 
+}
+
+void W5100Class::setRetransmissionTime(uint16_t timeout)
+{
+	// Get RTR x RCR divided by 9 because unit is 100us and have 10% larger delay
+	if ( chip == 55 ) {
+		writeRTR_W55(timeout); 
+		W5x00_RTR_RCR_TIME = (readRTR_W55() * (1 + readRCR_W55()) ) / 9;
+	}
+	else if ( chip == 52 || chip == 51 ) {
+		writeRTR_W5x(timeout); 
+		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
+	}
+}
+
+void W5100Class::setRetransmissionCount(uint8_t retry)
+{
+	// Get RTR x RCR divided by 9 because unit is 100us and have 10% larger delay
+	if ( chip == 55 ) {
+		writeRCR_W55(retry); 
+		W5x00_RTR_RCR_TIME = (readRTR_W55() * (1 + readRCR_W55()) ) / 9;
+	}
+	else if ( chip == 52 || chip == 51 ) {
+		writeRCR_W5x(retry); 
+		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
+	}
+}
 
 uint8_t W5100Class::getLinkStatus(uint8_t whichOne)
 {
