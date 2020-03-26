@@ -56,7 +56,7 @@ uint8_t  W5100Class::chip = 0;
 uint8_t  W5100Class::CH_BASE_MSB;
 uint8_t  W5100Class::ss_pin = SS_PIN_DEFAULT;
 //////////////////////////////////////////////////////////
-uint8_t   W5100Class::maxindex = 0;
+uint8_t	  W5100Class::maxindex = 0;
 uint16_t  W5100Class::W5x00_RTR_RCR_TIME = 0;
 bool	  W5100Class::OffsetAddressMapping = false;
 
@@ -124,8 +124,8 @@ uint8_t W5100Class::init(void)
 		CH_BASE_MSB = 0x40;
 		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
 #ifdef ENABLE_INTERRUPTS
-		writeSIR_W52(0xFF);		// enable all sockets interrupt
-		writeSIMR_W52(0xF0);
+		enableSocketsInterrupt(0x0F);		// enable all sockets interrupt
+		clearSocketsInterrupt(0xFF);
 #endif
 #ifdef ETHERNET_LARGE_BUFFERS
 		uint8_t i;
@@ -156,8 +156,8 @@ uint8_t W5100Class::init(void)
 		OffsetAddressMapping = true;
 		W5x00_RTR_RCR_TIME = (readRTR_W55() * (1 + readRCR_W55()) ) / 9;
 #ifdef ENABLE_INTERRUPTS
-		writeSIR_W55(0xFF);		// enable all sockets interrupt
-		writeSIMR_W55(0xF0);
+		enableSocketsInterrupt(0xFF);		// enable all sockets interrupt
+		clearSocketsInterrupt(0xFF);
 #endif
 #ifdef ETHERNET_LARGE_BUFFERS
 		uint8_t i;
@@ -180,7 +180,7 @@ uint8_t W5100Class::init(void)
 			writeSnTX_SIZE(i, 0);
 		}
 #endif
-	// Try W5100 last.  This simple chip uses fixed 4 byte frames
+	// Try W5100 last. This simple chip uses fixed 4 byte frames
 	// for every 8 bit access.  Terribly inefficient, but so simple
 	// it recovers from "hearing" unsuccessful W5100 or W5200
 	// communication.  W5100 is also the only chip without a VERSIONR
@@ -290,6 +290,13 @@ uint8_t W5100Class::isW5500(void)
 	return 1;
 }
 
+// General interrupts
+void W5100Class::enableSocketsInterrupt(uint8_t value)
+{
+	if ( chip == 55 ) writeSIMR_W55(value); 
+	else if ( chip == 52 ) writeSIMR_W52(value); 
+}
+
 uint8_t W5100Class::getSocketsInterrupt()
 { 
 	if ( chip == 55 ) return readSIR_W55();
@@ -303,6 +310,7 @@ void W5100Class::clearSocketsInterrupt(uint8_t value)
 	else if ( chip == 52 ) writeSIR_W52(value); 
 }
 
+// Retransmission parameters (retries and timeout)
 void W5100Class::setRetransmissionTime(uint16_t timeout)
 {
 	// Get RTR x RCR divided by 9 because unit is 100us and have 10% larger delay
@@ -329,11 +337,12 @@ void W5100Class::setRetransmissionCount(uint8_t retry)
 	}
 }
 
+// Link status
 uint8_t W5100Class::getLinkStatus(uint8_t whichOne)
 {
-	if (chip == 0 || chip == 51 )return UNKNOWN;
 #if not defined(__SAM3X8E__)
-	uint8_t phystatus = 0, msk =0x01;
+	if (chip == 0 || chip == 51 )return UNKNOWN;
+	uint8_t phystatus = 0, msk = 0x01;
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	if (chip == 55 ) phystatus = readPHYCFGR_W5500();
 	else if (chip == 52 ) {
@@ -343,24 +352,22 @@ uint8_t W5100Class::getLinkStatus(uint8_t whichOne)
 	SPI.endTransaction();
 	switch ( whichOne ) {
 		case LINK:
-		if ((phystatus & msk) == msk) return LINK_ON;
-		return LINK_OFF;
-		break;
-	case SPEED:
-		if (chip == 52 ) return UNKNOWN;
-		if ((phystatus & 0x02) == 0x02) return MBS_100;
-		return MBS_10;
-		break;
-	case DUPLEX:
-		if (chip == 52 ) return UNKNOWN;
-		if ((phystatus & 0x04) == 0x04) return FULL_DUPLEX;
-		return HALF_DUPLEX;
-		break;
+			if ((phystatus & msk) == msk) return LINK_ON;
+			return LINK_OFF;
+		case SPEED:
+			if (chip == 52 ) return UNKNOWN;
+			if ((phystatus & 0x02) == 0x02) return MBS_100;
+			return MBS_10;
+		case DUPLEX:
+			if (chip == 52 ) return UNKNOWN;
+			if ((phystatus & 0x04) == 0x04) return FULL_DUPLEX;
+			return HALF_DUPLEX;
 	}
 #endif
 	return UNKNOWN;
 }
 
+// Buffers read/write
 uint16_t W5100Class::write(uint16_t addr, const uint8_t *buf, uint16_t len)
 {
 	uint8_t cmd[SPI_BUFFER_SIZE];

@@ -155,7 +155,8 @@ public:
   static void execCmdSn(SOCKET s, SockCMD _cmd);
 
   // General INTERRUPTS
-  //static void enableSocketsInterrupt(uint8_t count) { writeSIMR(count); }
+  // Configure/enable which socket is allowed to raise an interrupt
+  static void enableSocketsInterrupt(uint8_t count);
   // Clear the general socket interrupt register
   static void clearSocketsInterrupt(uint8_t value);
   // Return the general socket interrupt register
@@ -223,8 +224,8 @@ public:
   __GP_REGISTER8 (RCR_W5x,    0x0019);	// W5100 & W5200: Retry count
   __GP_REGISTER8 (SIR_W55,    0x0017);	// W5500: Sockets Interrupt		// Which socket raised an interrupt
   __GP_REGISTER8 (SIMR_W55,   0x0018);	// W5500: Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
-  __GP_REGISTER8 (SIR_W52, 0x0034);		// W5200: Sockets Interrupt		// Which socket raised an interrupt
-  __GP_REGISTER8 (SIMR_W52,0x0036);		// W5200: Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
+  __GP_REGISTER8 (SIR_W52,	  0x0034);	// W5200: Sockets Interrupt		// Which socket raised an interrupt
+  __GP_REGISTER8 (SIMR_W52,	  0x0036);	// W5200: Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
   __GP_REGISTER16(RTR_W55,    0x0019);	// W5500: Timeout address
   __GP_REGISTER8 (RCR_W55,    0x001B);	// W5500: Retry count
   __GP_REGISTER8 (RMSR,   0x001A);		// W5100: Receive memory size
@@ -345,6 +346,7 @@ public:
   static const uint16_t SSIZE = 2048;
   static const uint16_t SMASK = 0x07FF;
 #endif
+  
   static uint16_t SBASE(uint8_t socknum) {
     if (chip == 51) {
       return socknum * SSIZE + 0x4000;

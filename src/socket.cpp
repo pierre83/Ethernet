@@ -7,8 +7,6 @@
  initialized (because the result of getChip() will never change even if the card died in the mean time)
  So, it is necessary to always control the result of Ethernet.begin(..) and remove this checking in the libraries (server and socket)
  
- Always verify that in TCP mode, the socket must be in init state after begin(), 
-
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this
  * software and associated documentation files (the "Software"), to deal in the Software
  * without restriction, including without limitation the rights to use, copy, modify,
@@ -220,7 +218,7 @@ uint8_t EthernetClass::socketCheckState(uint8_t expectedState, uint8_t s, uint16
 		yield();
 	}
 	// We never reached the expected state, we cannot go further
-	W5100.writeSnIR(s, 0xFF);	// 19-03-20 clear the possible interrupts of Socket n-th
+	W5100.writeSnIR(s, 0xFF);	// Clear possible interrupts of Socket n-th
 	W5100.execCmdSn(s, Sock_CLOSE);  // See W5200 DS pg 46 & W5200 DS pg 54
 	EthernetClass::outputPort[s] = 0;
 	return MAX_SOCK_NUM;
@@ -289,7 +287,8 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 			SPI.endTransaction();
 			return 1;	// Correct state achieved
 		}
-		// Surprisingly, the W5100 has an anormal CLOSED state between INIT and ESTABLISHED
+		// Surprisingly, the W5100 has sometimes an strange CLOSED state between 
+		// the INIT state and the ESTABLISHED state...
 		if ( (status == SnSR::CLOSED) && (W5100.getChip() != 51) ) break;
 		yield();
 	}
@@ -541,7 +540,7 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 	write_data(s, 0, (uint8_t *)buf, ret);	// copy data
 	W5100.execCmdSn(s, Sock_SEND);			// send data
 
-	stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
+	stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;	// Will Timeout before TCPto (31.8sec)
 	// Wait for operation complete
 	while (1) {
 		uint8_t status = W5100.readSnIR(s);
@@ -550,7 +549,8 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 			// As we did'nt count +ret, we don't count -ret
 			break;
 		}
-		// TIMEOUT Interrupts is set when TCPTO occurs
+		// TIMEOUT Interrupts is set when TCPTO occurs,
+		// The time of final timeout (TCPTO) of TCP retransmission is 31.8sec...
 		// When TCPTO occurs, it is changed to SOCK_CLOSED regardless of the previous value.
 		if (( W5100.readSnSR(s) == SnSR::CLOSED ) || ( status & SnIR::TIMEOUT ) ) {
 			W5100.writeSnIR(s, SnIR::SEND_OK | SnIR::TIMEOUT);
@@ -558,7 +558,7 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 			ret = 0;
 			break;
 		}
-		if ( millis() > stopWait ) {	// Default send timeout W5x00= 1618ms (Configure with RTR)
+		if ( millis() > stopWait ) {	// Default ARPto of W5x00 is 1618ms (Configured with RTR-RCR)
 			getSnTX_FSR(s);
 			ret = -1;
 			break;
@@ -663,9 +663,9 @@ int EthernetClass::socketSendUDP(uint8_t s)
 		// ARPTO occurs (Sn_IR(s)=‘1’) because the Destination Hardware Address is not
 		// acquired through the ARP process. In case of UDP or IPRAW mode it goes back
 		// to the previous status(SOCK_UDP or SOCK_IPRAW)
-		if ( ( status & SnIR::TIMEOUT ) == SnIR::TIMEOUT )  {
-			W5100.writeSnIR(s, (SnIR::TIMEOUT));
-			ret = 0;
+		if ( ( status & SnIR::TIMEOUT ) == SnIR::TIMEOUT ) { // Only on first ARP request
+			W5100.writeSnIR(s, (SnIR::TIMEOUT));		// then the address is memorized
+			ret = 0;									// except id FARP is set (W5500)
 			break;
 		}
 		SPI.endTransaction();

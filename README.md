@@ -77,7 +77,7 @@ Improvements:
 
 1c.Socket.cpp: now verifies that the status is LISTEN after a socketListen() command
 
-1d.Socket.cpp: now verifies that the status is UDP after a socketStartUDP() command
+1d.Socket.cpp: now verifies that the status is UDP, MAC, MACRAW after a socketStartUDP() command
 
 2.EthernetUdp.cpp: Fixed udp.flush(),
 
