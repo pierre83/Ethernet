@@ -55,7 +55,7 @@ enum
 {
 	padOption				=	0,
 	subnetMask				=	1,
-	timerOffset				=	2,
+	//timerOffset				=	2,
 	routersOnSubnet			=	3,
 	/* timeServer			=	4,
 	nameServer				=	5,*/

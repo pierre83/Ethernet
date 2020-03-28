@@ -50,26 +50,6 @@ uint8_t EthernetUDP::begin(uint16_t port)
 }
 
 // ****************************************************************************
-//		Return number of bytes available in the RCV buffer
-//		Return 0 if parsePacket hasn't been called yet or bad socket
-// ****************************************************************************
-int EthernetUDP::available()
-{
-    if (sockindex >= MAX_SOCK_NUM) return 0;
-    return _bytesInBuffer;
-}
-
-// ****************************************************************************
-//		Release any resources being used by this UDP instance
-// ****************************************************************************
-void EthernetUDP::stop()
-{
-    if (sockindex >= MAX_SOCK_NUM) return;
-    Ethernet.socketClose(sockindex);
-    sockindex = MAX_SOCK_NUM;
-}
-
-// ****************************************************************************
 //		Start building up a packet to send to the remote host specified in host and port
 //		Return 1 = success, -xx = DNS error code
 // ****************************************************************************
@@ -106,6 +86,16 @@ int EthernetUDP::endPacket()
 {
     if (sockindex >= MAX_SOCK_NUM) return 0;
     return Ethernet.socketSendUDP(sockindex);
+}
+
+// ****************************************************************************
+//		Release any resources being used by this UDP instance
+// ****************************************************************************
+void EthernetUDP::stop()
+{
+    if (sockindex >= MAX_SOCK_NUM) return;
+    Ethernet.socketClose(sockindex);
+    sockindex = MAX_SOCK_NUM;
 }
 
 // ****************************************************************************
@@ -170,26 +160,36 @@ int EthernetUDP::parsePacket()
 }
 
 // ****************************************************************************
+//		Return number of bytes available in the RCV buffer
+//		Return 0 if parsePacket hasn't been called yet or bad socket
+// ****************************************************************************
+int EthernetUDP::available()
+{
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    return _bytesInBuffer;
+}
+
+// ****************************************************************************
 //		Read a single byte from the current packet
-//		Returns the byte read or -1 if no data available/bad socket
+//		Returns the byte read or -1 if no data available
 // ****************************************************************************
 int EthernetUDP::read()
 {
     uint8_t byte;
+	if ( sockindex >= MAX_SOCK_NUM || _bytesInBuffer == 0 ) return -1;
     //Returns the byte read or -1 for no data
     if (Ethernet.socketRecv(sockindex, &byte, 1) > 0 ) {
         _bytesInBuffer--;
         return byte;
     }
-    // No data
-    _bytesInBuffer = 0;
+    // Data not yet in  buffer
     return -1;
 
 }
 
 // ****************************************************************************
 //		Read up to len bytes from the current packet and place them into 'buffer'
-//		Returns number of bytes read or -1 no data available/bad socket
+//		Returns number of bytes read or -1 no data available
 // ****************************************************************************
 int EthernetUDP::read(unsigned char *buffer, size_t len)
 {
@@ -197,18 +197,17 @@ int EthernetUDP::read(unsigned char *buffer, size_t len)
     int got;
     if (_bytesInBuffer <= len) {
         // data should fit in the buffer
-        got = Ethernet.socketRecv(sockindex, buffer, _bytesInBuffer);        //Returns size, or -1 for no data
+        got = Ethernet.socketRecv(sockindex, buffer, _bytesInBuffer);	//Returns size, or -1 for no data
     } else {
         // too much data for the buffer, grab as much as will fit
-        got = Ethernet.socketRecv(sockindex, buffer, len);        //Returns size, or -1 for no data
+        got = Ethernet.socketRecv(sockindex, buffer, len);	//Returns size, or -1 for no data
     }
     //Serial.printf("UDP read %i\n", got);
     if ( got > 0 ) {		//We read something
         _bytesInBuffer -= got;
         return got;
     }
- 	// No data
-    _bytesInBuffer = 0;
+ 	// Data not yet in  buffer
     return -1;
 }
 

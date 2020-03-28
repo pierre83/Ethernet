@@ -289,8 +289,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 			SPI.endTransaction();
 			return 1;	// Correct state achieved
 		}
-		// Surprisingly, the W5100 has sometimes an strange CLOSED state between 
-		// the INIT state and the ESTABLISHED state...
+		// The W5100 sometimes goes to CLOSED state between INIT and ESTABLISHED states
 		if ( (status == SnSR::CLOSED) && (W5100.getChip() != 51) ) break;
 		yield();
 	}

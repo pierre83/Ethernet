@@ -286,36 +286,42 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
         _dhcpUdpSocket.read((uint8_t *)NULL, 240 - (int)sizeof(RIP_MSG_FIXED));
 
         while (_dhcpUdpSocket.available() > 0) {
-            switch (_dhcpUdpSocket.read()) {
-            case endOption :
+			int quoi = _dhcpUdpSocket.read();
+			//Serial.print("quoi: "); Serial.println(quoi);
+            switch ( quoi ) {
+            case padOption :	// 0
                 break;
 
-            case padOption :
+            case endOption :	// 255
                 break;
 
-            case dhcpMessageType :
+            case dhcpMessageType :	// 53
                 opt_len = _dhcpUdpSocket.read();
                 type = _dhcpUdpSocket.read();
+				//Serial.print("type: "); Serial.println(type);
                 break;
 
-            case subnetMask :
+            case subnetMask :	// 1
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read(_dhcpSubnetMask, 4);
                 break;
 
-            case routersOnSubnet :
+            case routersOnSubnet :	// 3
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read(_dhcpGatewayIp, 4);
+				//Serial.print("GW: "); Serial.println(IPAddress(_dhcpGatewayIp));
+				//Serial.print("opt_len: "); Serial.println(opt_len);
                 _dhcpUdpSocket.read((uint8_t *)NULL, opt_len - 4);
                 break;
 
-            case dns :
+            case dns :	// 6
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read(_dhcpDnsServerIp, 4);
+				//Serial.print("dns: "); Serial.println(IPAddress(_dhcpDnsServerIp));
                 _dhcpUdpSocket.read((uint8_t *)NULL, opt_len - 4);
                 break;
 
-            case dhcpServerIdentifier :
+            case dhcpServerIdentifier :		// 54
                 opt_len = _dhcpUdpSocket.read();
                 if ( IPAddress(_dhcpDhcpServerIp) == IPAddress((uint32_t)0) || IPAddress(_dhcpDhcpServerIp) == _dhcpUdpSocket.remoteIP() ) {
                     _dhcpUdpSocket.read(_dhcpDhcpServerIp, sizeof(_dhcpDhcpServerIp));
@@ -323,21 +329,22 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
                     // Skip over the rest of this option
                     _dhcpUdpSocket.read((uint8_t *)NULL, opt_len);
                 }
+				//Serial.print("DHCP: "); Serial.println(IPAddress(_dhcpDhcpServerIp));
                 break;
 
-            case dhcpT1value :
+            case dhcpT1value :		// 58
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read((uint8_t*)&_dhcpT1, sizeof(_dhcpT1));
                 _dhcpT1 = ntohl(_dhcpT1);
                 break;
 
-            case dhcpT2value :
+            case dhcpT2value :		// 59
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read((uint8_t*)&_dhcpT2, sizeof(_dhcpT2));
                 _dhcpT2 = ntohl(_dhcpT2);
                 break;
 
-            case dhcpIPaddrLeaseTime :
+            case dhcpIPaddrLeaseTime :		// 51
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read((uint8_t*)&_dhcpLeaseTime, sizeof(_dhcpLeaseTime));
                 _dhcpLeaseTime = ntohl(_dhcpLeaseTime);

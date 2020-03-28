@@ -96,7 +96,7 @@ public:
 	// gain the rest of the configuration through DHCP.
 	// Returns 0 if the DHCP configuration failed, -1 if W5x00 did not initialize 
 	// properly and 1 if it succeeded
-	static int begin(uint8_t *mac, unsigned long timeout = 5000, unsigned long responseTimeout = 3000);
+	static int begin(uint8_t *mac, unsigned long timeout = 5000, unsigned long responseTimeout = 5000);
 	static int maintain();
 	
 	static EthernetLinkStatus linkStatus();
@@ -348,10 +348,16 @@ private:
 
 	int request_DHCP_lease();
 	void reset_DHCP_lease();
-	bool send_DHCP_MESSAGE(uint8_t, uint32_t);
 	void printByte(char *, uint8_t);
 
+	// new library
+	bool send_DHCP_MESSAGE(uint8_t, uint32_t);
 	uint8_t parseDHCPResponse( uint32_t& transactionId);
+	// old library
+	//uint8_t parseDHCPResponse(unsigned long responseTimeout, uint32_t& transactionId);
+	//void presend_DHCP();
+	//void send_DHCP_MESSAGE(uint8_t messageType, uint16_t secondsElapsed);
+	
 public:
 	IPAddress getLocalIp();
 	IPAddress getSubnetMask();
