@@ -62,7 +62,7 @@ EthernetClient EthernetServer::available()
 	for (uint8_t i=0; i < maxIndex; i++) {
 		if (EthernetClass::outputPort[i] == _port) {
 			switch ( Ethernet.socketStatus(i) ) {
-				// As the socket status is verified (up to LISTEN) we should normaly never be (here) in INIT state
+				// As the socket status is verified up to LISTEN we should normaly never be here in INIT state
 				case SnSR::LISTEN:		// Most of the time
 					// A web server is running
 					listening = true;
@@ -92,7 +92,6 @@ EthernetClient EthernetServer::available()
 					}
 					break;
 				case SnSR::CLOSED:
-					// Sn_SR changes to SOCK_CLOSED during a client connection failure(SYN/ACK packet failed to transfer)
 					EthernetClass::outputPort[i] = 0;
 					break;
 			}
@@ -154,7 +153,7 @@ EthernetServer::operator bool()
 }
 
 // ********************************************************************
-// Returns	1= ok, 0 = timeout/fail, 65535 = frozen
+// Returns	1= ok, 0 = timeout/fail
 // ********************************************************************
 size_t EthernetServer::write(uint8_t b)
 {

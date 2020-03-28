@@ -98,6 +98,7 @@ public:
 	// properly and 1 if it succeeded
 	static int begin(uint8_t *mac, unsigned long timeout = 5000, unsigned long responseTimeout = 3000);
 	static int maintain();
+	
 	static EthernetLinkStatus linkStatus();
 	static EthernetLinkStatus linkSpeed();
 	static EthernetLinkStatus linkDuplex();
@@ -122,6 +123,7 @@ public:
 	void setSubnetMask(const IPAddress subnet);
 	void setGatewayIP(const IPAddress gateway);
 	void setDnsServerIP(const IPAddress dns_server) { _dnsServerAddress = dns_server; }
+
 	void setRetransmissionTimeout(uint16_t milliseconds);
 	void setRetransmissionCount(uint8_t num);
 
@@ -130,34 +132,42 @@ public:
 	friend class EthernetUDP;
 
 private:
-	static bool socketInit();
+
 	// Opens a socket(TCP or UDP or IP_RAW mode)
 	static uint8_t socketBegin(uint8_t protocol, uint16_t port);
-	static uint8_t socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmp);
+	// Multicast version of open a socket (UDP mode)
+	static uint8_t socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmpVersion);
+	// Pick a socket and configure it, called by socketBegin or socketBeginMulticast
+	static uint8_t socketInit(uint8_t protocol, uint16_t port);
+	// Check that the socket status is in the expected mode
+	static uint8_t socketCheckState(uint8_t state, uint8_t s, uint16_t timeout);
+	// Returns the socket's status
 	static uint8_t socketStatus(uint8_t s);
+	// Returns the socket's interrupts
 	static uint8_t socketInterrupt(uint8_t s);
 	// Close socket
 	static void socketClose(uint8_t s);
-	// Establish TCP connection (Active connection)
+	// Establish TCP connection (Active connection: client)
 	static uint8_t socketConnect(uint8_t s, uint8_t * addr, uint16_t port);
 	// disconnect the connection
 	static void socketDisconnect(uint8_t s);
-	// Establish TCP connection (Passive connection)
+	// Establish TCP connection (Passive connection: server)
 	static uint8_t socketListen(uint8_t s);
 	// Send data (TCP)
 	static int socketSend(uint8_t s, const uint8_t * buf, uint16_t len);
-	// Return: freesize ou 0 si buffer full (connected or close_wait socket)
-	// 		or:	-1 = socket not connected
+	// Return: freesize ou 0 si buffer full (connected or close_wait state)
+	// or:	-1 = socket not connected
 	static int socketSendAvailable(uint8_t s);
 	// Receive data (TCP), Returns size, or -1 for no data, or 0 if not connected
 	static int socketRecv(uint8_t s, uint8_t * buf, uint16_t len);
 	// Returns the number of characters available, or 0 if none are available
 	static uint16_t socketRecvAvailable(uint8_t s);
+	// Get the first byte in the receive queue
 	static uint8_t socketPeek(uint8_t s);
 	// sets up a UDP datagram, the data for which will be provided by one
 	// or more calls to bufferData and then finally sent with sendUDP.
 	// return 1 if the datagram was successfully set up, or 0 if there was an error
-	static bool socketStartUDP(uint8_t s, uint8_t* addr, uint16_t port);
+	static int socketStartUDP(uint8_t s, uint8_t* addr, uint16_t port);
 	// copy up to len bytes of data from buf into a UDP datagram to be
 	// sent later by sendUDP.  Allows datagrams to be built up from a series of bufferData calls.
 	// return Number of bytes successfully buffered
@@ -168,12 +178,9 @@ private:
 	static int socketSendUDP(uint8_t s);
 	// Initialize the "random" source port number
 	static uint16_t socketPortRand();
-	// Check that the socket status is in the correct mode
-	static uint8_t socketCheckState(uint8_t state, uint8_t s, uint16_t timeout);
 	// Verify if the socket has not been already attributed
 	static bool sourcePortCheck(uint16_t port);
-	// Pick a socket and configure it, called by socketBegin or socketBeginMulticast
-	static uint8_t socketInit(uint8_t protocol, uint16_t port);
+
 	// Writes the network parameters into the W5x00
 	static void setNetworkParameters(IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet);
 	// Retrieve DHCP parameters and pass them to setNetworkParameters

@@ -1,5 +1,5 @@
 /* Copyright 2020 Pierre Casal
- * 
+ *
  *
  *  Udp.cpp: Library to send/receive UDP packets with the Arduino ethernet shield.
  *  This version only offers minimal wrapping of socket.cpp
@@ -40,13 +40,13 @@
 // ****************************************************************************
 uint8_t EthernetUDP::begin(uint16_t port)
 {
-	// Normally the W5x00 should close it or the sketch called it twice ?
-	if (sockindex < MAX_SOCK_NUM) Ethernet.socketClose(sockindex);
-	sockindex = Ethernet.socketBegin(SnMR::UDP, port);
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	_port = port;
-	_bytesInBuffer = 0;
-	return 1;
+    // Normally the W5x00 should close it or the sketch called it twice ?
+    if (sockindex < MAX_SOCK_NUM) Ethernet.socketClose(sockindex);
+    sockindex = Ethernet.socketBegin(SnMR::UDP, port);
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    _port = port;
+    _bytesInBuffer = 0;
+    return 1;
 }
 
 // ****************************************************************************
@@ -55,8 +55,8 @@ uint8_t EthernetUDP::begin(uint16_t port)
 // ****************************************************************************
 int EthernetUDP::available()
 {
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	return _bytesInBuffer;
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    return _bytesInBuffer;
 }
 
 // ****************************************************************************
@@ -64,9 +64,9 @@ int EthernetUDP::available()
 // ****************************************************************************
 void EthernetUDP::stop()
 {
-	if (sockindex >= MAX_SOCK_NUM) return;
-	Ethernet.socketClose(sockindex);
-	sockindex = MAX_SOCK_NUM;
+    if (sockindex >= MAX_SOCK_NUM) return;
+    Ethernet.socketClose(sockindex);
+    sockindex = MAX_SOCK_NUM;
 }
 
 // ****************************************************************************
@@ -75,15 +75,15 @@ void EthernetUDP::stop()
 // ****************************************************************************
 int EthernetUDP::beginPacket(const char *host, uint16_t port)
 {
-	// Look up the host first
-	DNSClient dns;
-	IPAddress remote_addr;
+    // Look up the host first
+    DNSClient dns;
+    IPAddress remote_addr;
 
-	int ret = dns.begin(Ethernet.dnsServerIP());
-	if (ret != 1) return ret;
-	ret = dns.getHostByName(host, remote_addr, DNS_TIMEOUT);
-	if (ret != 1) return ret;
-	return beginPacket(remote_addr, port);
+    int ret = dns.begin(Ethernet.dnsServerIP());
+    if (ret != 1) return ret;
+    ret = dns.getHostByName(host, remote_addr, DNS_TIMEOUT);
+    if (ret != 1) return ret;
+    return beginPacket(remote_addr, port);
 }
 
 // ****************************************************************************
@@ -92,10 +92,10 @@ int EthernetUDP::beginPacket(const char *host, uint16_t port)
 // ****************************************************************************
 int EthernetUDP::beginPacket(IPAddress ip, uint16_t port)
 {
-	_offset = 0;
-	//Serial.printf("UDP beginPacket\n");
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	return Ethernet.socketStartUDP(sockindex, rawIPAddress(ip), port);
+    _offset = 0;
+    //Serial.printf("UDP beginPacket\n");
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    return Ethernet.socketStartUDP(sockindex, rawIPAddress(ip), port);
 }
 
 // ****************************************************************************
@@ -104,8 +104,8 @@ int EthernetUDP::beginPacket(IPAddress ip, uint16_t port)
 // ****************************************************************************
 int EthernetUDP::endPacket()
 {
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	return Ethernet.socketSendUDP(sockindex);
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    return Ethernet.socketSendUDP(sockindex);
 }
 
 // ****************************************************************************
@@ -114,30 +114,30 @@ int EthernetUDP::endPacket()
 // ****************************************************************************
 int EthernetUDP::availableForWrite()
 {
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	return Ethernet.socketSendAvailable(sockindex);
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    return Ethernet.socketSendAvailable(sockindex);
 }
 
 // ****************************************************************************
-//		Write 1 byte into the packet buffer, will be sent 
+//		Write 1 byte into the packet buffer, will be sent
 //		later using socketSendUDP(..). Return 0 or 1
 // ****************************************************************************
 size_t EthernetUDP::write(uint8_t byte)
 {
-	return write(&byte, 1);
+    return write(&byte, 1);
 }
 
 // ****************************************************************************
-//		Write size bytes from 'buffer' into the packet buffer, will be sent 
+//		Write size bytes from 'buffer' into the packet buffer, will be sent
 //		later using socketSendUDP(..). Returns the number of bytes written
 // ****************************************************************************
 size_t EthernetUDP::write(const uint8_t *buffer, size_t size)
 {
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	uint16_t bytes_written = Ethernet.socketBufferDataUDP(sockindex, _offset, buffer, size);
-	_offset += bytes_written;
-	//Serial.printf("UDP write %u\n", bytes_written);
-	return bytes_written;
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    uint16_t bytes_written = Ethernet.socketBufferDataUDP(sockindex, _offset, buffer, size);
+    _offset += bytes_written;
+    //Serial.printf("UDP write %u\n", bytes_written);
+    return bytes_written;
 }
 
 // ****************************************************************************
@@ -146,27 +146,27 @@ size_t EthernetUDP::write(const uint8_t *buffer, size_t size)
 // ****************************************************************************
 int EthernetUDP::parsePacket()
 {
-	const uint8_t HEADER_LENGTH = 8;
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	if ( ( Ethernet.socketInterrupt(sockindex) & SnIR::RECV ) == SnIR::RECV ) {
-	//if ( Ethernet.socketRecvAvailable(sockindex) >= HEADER_LENGTH ) {
-		//HACK - hand-parse the UDP packet using TCP recv method
-		uint8_t headerBuffer[HEADER_LENGTH];
-		//read 8 header bytes and get IP, port and packet length from it
-		if (Ethernet.socketRecv(sockindex, headerBuffer, HEADER_LENGTH) == HEADER_LENGTH) {
-			_remoteIP   = headerBuffer;
-			_remotePort = headerBuffer[4];
-			_remotePort = (_remotePort << 8) + headerBuffer[5];
-			_bytesInBuffer  = headerBuffer[6];
-			_bytesInBuffer  = (_bytesInBuffer << 8) + headerBuffer[7];
-			// Return amount of available data
-			return _bytesInBuffer;
-		}
-		// No data or truncated packet
-		flush();		// 19-03-20: the socket pointer is somewhere
-	}
-	_bytesInBuffer = 0;
-	return 0;
+    const uint8_t HEADER_LENGTH = 8;
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    if ( ( Ethernet.socketInterrupt(sockindex) & SnIR::RECV ) == SnIR::RECV ) {
+        //if ( Ethernet.socketRecvAvailable(sockindex) >= HEADER_LENGTH ) {
+        //HACK - hand-parse the UDP packet using TCP recv method
+        uint8_t headerBuffer[HEADER_LENGTH];
+        //read 8 header bytes and get IP, port and packet length from it
+        if (Ethernet.socketRecv(sockindex, headerBuffer, HEADER_LENGTH) == HEADER_LENGTH) {
+            _remoteIP   = headerBuffer;
+            _remotePort = headerBuffer[4];
+            _remotePort = (_remotePort << 8) + headerBuffer[5];
+            _bytesInBuffer  = headerBuffer[6];
+            _bytesInBuffer  = (_bytesInBuffer << 8) + headerBuffer[7];
+            // Return amount of available data
+            return _bytesInBuffer;
+        }
+        // No data or truncated packet
+        flush();		// The socket pointer is somewhere
+    }
+    _bytesInBuffer = 0;
+    return 0;
 }
 
 // ****************************************************************************
@@ -175,15 +175,15 @@ int EthernetUDP::parsePacket()
 // ****************************************************************************
 int EthernetUDP::read()
 {
-	uint8_t byte;
-	//Returns the byte read or -1 for no data
-	if (Ethernet.socketRecv(sockindex, &byte, 1) > 0 ) {
-		_bytesInBuffer--;
-		return byte;
-	}
-	// No data
-	_bytesInBuffer = 0;
-	return -1;
+    uint8_t byte;
+    //Returns the byte read or -1 for no data
+    if (Ethernet.socketRecv(sockindex, &byte, 1) > 0 ) {
+        _bytesInBuffer--;
+        return byte;
+    }
+    // No data
+    _bytesInBuffer = 0;
+    return -1;
 
 }
 
@@ -193,24 +193,23 @@ int EthernetUDP::read()
 // ****************************************************************************
 int EthernetUDP::read(unsigned char *buffer, size_t len)
 {
-	if ( sockindex >= MAX_SOCK_NUM || _bytesInBuffer == 0 ) return -1;
-	int got;
-	if (_bytesInBuffer <= len) {
-		// data should fit in the buffer
-		got = Ethernet.socketRecv(sockindex, buffer, _bytesInBuffer);
-		//Returns size, or -1 for no data, or 0 if connection closed(TCP)
-	} else {
-		// too much data for the buffer, grab as much as will fit
-		got = Ethernet.socketRecv(sockindex, buffer, len);
-		//Returns size, or -1 for no data, or 0 if connection closed(TCP)
-	}
-	//Serial.printf("UDP read %i\n", got);
-	if ( got > 0 ) {		//We read something
-		_bytesInBuffer -= got;
-		return got;
-	} 	// No data
-	_bytesInBuffer = 0;
-	return -1;
+    if ( sockindex >= MAX_SOCK_NUM || _bytesInBuffer == 0 ) return -1;
+    int got;
+    if (_bytesInBuffer <= len) {
+        // data should fit in the buffer
+        got = Ethernet.socketRecv(sockindex, buffer, _bytesInBuffer);        //Returns size, or -1 for no data
+    } else {
+        // too much data for the buffer, grab as much as will fit
+        got = Ethernet.socketRecv(sockindex, buffer, len);        //Returns size, or -1 for no data
+    }
+    //Serial.printf("UDP read %i\n", got);
+    if ( got > 0 ) {		//We read something
+        _bytesInBuffer -= got;
+        return got;
+    }
+ 	// No data
+    _bytesInBuffer = 0;
+    return -1;
 }
 
 // ****************************************************************************
@@ -220,12 +219,12 @@ int EthernetUDP::read(unsigned char *buffer, size_t len)
 // ****************************************************************************
 int EthernetUDP::peek()
 {
-	// Unlike recv, peek doesn't check to see if there's any data available. 
-	// Note that none of the pointers are updated. Read can be anywhere...
-	// If the user hasn't called parsePacket yet then return nothing otherwise they
-	// may get the UDP header
-	if ( _bytesInBuffer == 0 || sockindex >= MAX_SOCK_NUM ) return -1;
-	return Ethernet.socketPeek(sockindex);
+    // Unlike recv, peek doesn't check to see if there's any data available.
+    // Note that none of the pointers are updated. Read can be anywhere...
+    // If the user hasn't called parsePacket yet then return nothing otherwise they
+    // may get the UDP header
+    if ( _bytesInBuffer == 0 || sockindex >= MAX_SOCK_NUM ) return -1;
+    return Ethernet.socketPeek(sockindex);
 }
 
 // ****************************************************************************
@@ -233,27 +232,27 @@ int EthernetUDP::peek()
 // ****************************************************************************
 void EthernetUDP::flush()
 {
-	const uint16_t WAIT_FOR_FLUSH = 200;
-	if (sockindex >= MAX_SOCK_NUM) return;
-	uint32_t stopWait = millis() + WAIT_FOR_FLUSH;
-	while ( millis() < stopWait ) {
-		int ret = Ethernet.socketRecvAvailable(sockindex);
-		if ( Ethernet.socketRecv(sockindex, (uint8_t *)NULL, ret) <= 0 ) break;
-	}
+    const uint16_t WAIT_FOR_FLUSH = 200;		// millis
+    if (sockindex >= MAX_SOCK_NUM) return;
+    uint32_t stopWait = millis() + WAIT_FOR_FLUSH;
+    while ( millis() < stopWait ) {
+        int ret = Ethernet.socketRecvAvailable(sockindex);
+        if ( Ethernet.socketRecv(sockindex, (uint8_t *)NULL, ret) <= 0 ) break;
+    }
 
-	_bytesInBuffer = 0;
+    _bytesInBuffer = 0;
 }
 
 // ****************************************************************************
 //		Start EthernetUDP socket in multicast mode
 // ****************************************************************************
-uint8_t EthernetUDP::beginMulticast(IPAddress ip, uint16_t port, uint8_t igmp)
+uint8_t EthernetUDP::beginMulticast(IPAddress ip, uint16_t port, uint8_t igmpVersion)
 {
-	if (sockindex < MAX_SOCK_NUM) Ethernet.socketClose(sockindex);
-	sockindex = Ethernet.socketBeginMulticast(ip, port, igmp);
-	if (sockindex >= MAX_SOCK_NUM) return 0;
-	_port = port;
-	_bytesInBuffer = 0;
-	return 1;
+    if (sockindex < MAX_SOCK_NUM) Ethernet.socketClose(sockindex);
+    sockindex = Ethernet.socketBeginMulticast(ip, port, igmpVersion);
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    _port = port;
+    _bytesInBuffer = 0;
+    return 1;
 }
 

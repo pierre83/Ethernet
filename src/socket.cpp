@@ -35,14 +35,16 @@ extern void yield(void);
 #define yield()
 #endif
 
-
-const uint16_t UPDATE_Sn_RX_RD_THRESHOLD	= 700;	// Threshold used to retrieve real values and update sockstate values
-const uint16_t SOCKET_LISTEN_TIMEOUT		= 1000;	// (ms) Max time for the socket to pass from INIT to LISTEN mode 
-const uint16_t SOCKET_INIT_TIMEOUT			= 100;	// (ms) Max time for the socket to pass from CLOSE to INIT/UDP/IPRAW/MACRAW mode 
+	// Threshold used to retrieve real values and update sockstate values
+const uint16_t UPDATE_Sn_RX_RD_THRESHOLD	= 700;
+	// (ms) Max time for the socket to pass from INIT state to LISTEN state 
+const uint16_t SOCKET_LISTEN_TIMEOUT		= 1000;
+	// (ms) Max time for the socket to pass from CLOSED to INIT/UDP/IPRAW/MACRAW state
+const uint16_t SOCKET_INIT_TIMEOUT			= 100;	
 
 // Values retrieved from RTR & RCR (Retry Time and Retry Count Registers) configuration
 // Following DS, this is the ARPto (default values of RTR & RCR), TCPto = 31.8 secondes
-uint16_t W5x00_RTR_RCR_TIMEOUT		= 2000;	// Retrieved from RTR (Retry Time-value Register) x RCR 
+uint16_t W5x00_RTR_RCR_TIMEOUT		= 2000;	// (ms) Retrieved during run from RTR x RCR 
 
 
 uint16_t EthernetClass::outputPort[MAX_SOCK_NUM];
@@ -131,11 +133,11 @@ uint8_t EthernetClass::socketBegin(uint8_t protocol, uint16_t port)
 // Multicast version of open a socket (UDP mode)
 // Set fields before open, select IGMP version (v1 or v2)
 // **********************************************************************************
-uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmp)
+uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmpVersion)
 {
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	uint8_t protocol = SnMR::UDP | SnMR::MULTI;
-	if ( igmp == 2 ) protocol |= SnMR::IGMP;
+	if ( igmpVersion == 2 ) protocol |= SnMR::IGMP;
 	uint8_t s = socketInit(protocol, port);
 	if ( s < MAX_SOCK_NUM ) {
 		// Calculate MAC address from Multicast IP Address
@@ -147,7 +149,7 @@ uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t
 		W5100.writeSnDPORT(s, port);
 		W5100.writeSnDHAR(s, mac);
 		W5100.execCmdSn(s, Sock_OPEN);
-		s = socketCheckState(SnSR::UDP, s, SOCKET_INIT_TIMEOUT);
+		s = socketCheckState(protocol, s, SOCKET_INIT_TIMEOUT);//to be verified
 	}
 	SPI.endTransaction();
 	return s;
@@ -195,14 +197,14 @@ makesocket:
 		localPort = socketPortRand();
 	}
 	W5100.writeSnPORT(s, localPort);
-	W5100.writeSnIR(s, 0xFF);	// Clear possible socket's interrupts
+	W5100.writeSnIR(s, 0xFF);	// Clear socket's interrupts
 	EthernetClass::outputPort[s] = localPort;
 	state[s].RX_RSR = 0;
 	state[s].RX_RD	= 0;		//Initialized to 0 by SOCK_OPEN command
 	state[s].RX_inc	= 0;
 	state[s].TX_FSR	= W5100.SSIZE;		// Buffer size
 	//Serial.printf("W5000socket prot=%u, port=%u\n", protocol, localPort);
-	W5x00_RTR_RCR_TIMEOUT = W5100.getW5x00Timeout();		// Be carefull if RTR or RCR changed !
+	W5x00_RTR_RCR_TIMEOUT = W5100.getW5x00Timeout();
 	//Serial.print("W5x00_RTR_RCR_TIMEOUT: "); Serial.println(W5x00_RTR_RCR_TIMEOUT);
 	return s;
 }
@@ -218,8 +220,8 @@ uint8_t EthernetClass::socketCheckState(uint8_t expectedState, uint8_t s, uint16
 		yield();
 	}
 	// We never reached the expected state, we cannot go further
-	W5100.writeSnIR(s, 0xFF);	// Clear possible interrupts of Socket n-th
-	W5100.execCmdSn(s, Sock_CLOSE);  // See W5200 DS pg 46 & W5200 DS pg 54
+	W5100.writeSnIR(s, 0xFF);	// Clear possible Socket's interrupts
+	W5100.execCmdSn(s, Sock_CLOSE);  // See W5200 DS pg 46 & pg 54
 	EthernetClass::outputPort[s] = 0;
 	return MAX_SOCK_NUM;
 }
@@ -310,6 +312,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 // **********************************************************************************
 void EthernetClass::socketDisconnect(uint8_t s)
 {
+	// No verification for this action, socket will be closed by socketInit() if needed
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	W5100.execCmdSn(s, Sock_DISCON);
 	SPI.endTransaction();
@@ -322,7 +325,7 @@ void EthernetClass::socketDisconnect(uint8_t s)
 void EthernetClass::socketClose(uint8_t s)
 {
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	W5100.writeSnIR(s, 0xFF);	// 19-03-20 clear the remained interrupts of Socket n-th
+	W5100.writeSnIR(s, 0xFF);	// Clear the remained Socket's interrupts
 	W5100.execCmdSn(s, Sock_CLOSE);
 	SPI.endTransaction();
 	EthernetClass::outputPort[s] = 0;
@@ -390,7 +393,7 @@ int EthernetClass::socketRecv(uint8_t s, uint8_t *buf, uint16_t len)
 		uint8_t status = W5100.readSnSR(s);
 		SPI.endTransaction();
 		if ( status == SnSR::ESTABLISHED || status == SnSR::UDP ) {
-			// The connection is still up(TCP), for UDP... But there's no data waiting to be read
+			// The connection is still up(TCP), for UDP... But there's nothing to read
 			//Serial.printf("socketRecv, ret= -1\n");
 			return -1;
 		}
@@ -507,7 +510,7 @@ static void write_data(uint8_t s, uint16_t data_offset, const uint8_t *data, uin
 // **********************************************************************************
 int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 {
-	const uint16_t W5x00_FSR_TIMEOUT = 300;	// Limit of time to get FSR infos
+	const uint16_t W5x00_FSR_TIMEOUT = 300;	// (us) Limit of time to get FSR infos
 	uint32_t stopWait;
 	int ret = len;
 	
@@ -605,16 +608,16 @@ int EthernetClass::socketSendAvailable(uint8_t s)
 // Verify and initialize the socket with the destination IP address
 // Returns true if ok, false if not
 // **********************************************************************************
-bool EthernetClass::socketStartUDP(uint8_t s, uint8_t* addr, uint16_t port)
+int EthernetClass::socketStartUDP(uint8_t s, uint8_t* addr, uint16_t port)
 {
 	if ( ( (addr[0] == 0x00) && (addr[1] == 0x00) && (addr[2] == 0x00) && (addr[3] == 0x00)) || port == 0x00 ) {
-		return false;
+		return 0;
 	}
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	W5100.writeSnDIPR(s, addr);
 	W5100.writeSnDPORT(s, port);
 	SPI.endTransaction();
-	return true;
+	return 1;
 }
 
 // **********************************************************************************
@@ -650,12 +653,12 @@ int EthernetClass::socketSendUDP(uint8_t s)
 	W5100.execCmdSn(s, Sock_SEND);
 
 	// Wait for op complete
-	int ret = -1;		// W5x00 issue
+	int ret = -1;		// W5x00 failed
 	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
-	while (millis() < stopWait ) {			// W5x00 issue
+	while (millis() < stopWait ) {			// W5x00 failed
 		uint8_t status = W5100.readSnIR(s);
 		if ( ( status & SnIR::SEND_OK ) == SnIR::SEND_OK ) {
-			W5100.writeSnIR(s, SnIR::SEND_OK);
+			//W5100.writeSnIR(s, SnIR::SEND_OK);
 			//Serial.printf("sendUDP ok\n");
 			ret = 1;
 			break;
@@ -664,7 +667,7 @@ int EthernetClass::socketSendUDP(uint8_t s)
 		// acquired through the ARP process. In case of UDP or IPRAW mode it goes back
 		// to the previous status(SOCK_UDP or SOCK_IPRAW)
 		if ( ( status & SnIR::TIMEOUT ) == SnIR::TIMEOUT ) { // Only on first ARP request
-			W5100.writeSnIR(s, (SnIR::TIMEOUT));		// then the address is memorized
+			//W5100.writeSnIR(s, SnIR::TIMEOUT);			// then the address is memorized
 			ret = 0;									// except id FARP is set (W5500)
 			break;
 		}
@@ -673,6 +676,7 @@ int EthernetClass::socketSendUDP(uint8_t s)
 		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	}
 	getSnTX_FSR(s);  // => update state[s].TX_FSR
+	W5100.writeSnIR(s, (SnIR::SEND_OK || SnIR::TIMEOUT));
 	SPI.endTransaction();
 #if 0
 	uint32_t elapsed = millis() - (stopWait - W5x00_RTR_RCR_TIMEOUT);

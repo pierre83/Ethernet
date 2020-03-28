@@ -49,6 +49,8 @@
 
 #ifndef SPI_HAS_TRANSFER_BUF
 #define SPI_BUFFER_SIZE 18
+#else
+#define SPI_BUFFER_SIZE 4
 #endif
 
 // W5100 controller instance
@@ -341,7 +343,7 @@ void W5100Class::setRetransmissionCount(uint8_t retry)
 uint8_t W5100Class::getLinkStatus(uint8_t whichOne)
 {
 #if not defined(__SAM3X8E__)
-	if (chip == 0 || chip == 51 )return UNKNOWN;
+	if (chip == 0 || chip == 51 ) return UNKNOWN;
 	uint8_t phystatus = 0, msk = 0x01;
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	if (chip == 55 ) phystatus = readPHYCFGR_W5500();
@@ -492,36 +494,36 @@ uint16_t W5100Class::read(uint16_t addr, uint8_t *buf, uint16_t len)
 		return len;
 	}
 	// chip = 55
-		setSS();
-		if (addr < 0x100) {
-			// common registers 00nn
-			cmd[0] = 0;
-			cmd[1] = addr & 0xFF;
-			cmd[2] = 0x00;
-		} else if (addr < 0x8000) {
-			// socket registers  10nn, 11nn, 12nn, 13nn, etc
-			cmd[0] = 0;
-			cmd[1] = addr & 0xFF;
-			cmd[2] = ((addr >> 3) & 0xE0) | 0x08;
-		//} else if (addr < 0xC000) {		// Why read in TX buffers ?
-		} else {
-			// receive buffers
-			cmd[0] = addr >> 8;
-			cmd[1] = addr & 0xFF;
-			#if defined(ETHERNET_LARGE_BUFFERS) && MAX_SOCK_NUM <= 1
-			cmd[2] = 0x18;                       // 16K buffers
-			#elif defined(ETHERNET_LARGE_BUFFERS) && MAX_SOCK_NUM <= 2
-			cmd[2] = ((addr >> 8) & 0x20) | 0x18; // 8K buffers
-			#elif defined(ETHERNET_LARGE_BUFFERS) && MAX_SOCK_NUM <= 4
-			cmd[2] = ((addr >> 7) & 0x60) | 0x18; // 4K buffers
-			#else
-			cmd[2] = ((addr >> 6) & 0xE0) | 0x18; // 2K buffers
-			#endif
-		}
-		SPI.transfer(cmd, 3);
-		SPI.transfer(buf, len);
-		resetSS();
-		return len;
+	setSS();
+	if (addr < 0x100) {
+		// common registers 00nn
+		cmd[0] = 0;
+		cmd[1] = addr & 0xFF;
+		cmd[2] = 0x00;
+	} else if (addr < 0x8000) {
+		// socket registers  10nn, 11nn, 12nn, 13nn, etc
+		cmd[0] = 0;
+		cmd[1] = addr & 0xFF;
+		cmd[2] = ((addr >> 3) & 0xE0) | 0x08;
+	//} else if (addr < 0xC000) {		// Why read in TX buffers ?
+	} else {
+		// receive buffers
+		cmd[0] = addr >> 8;
+		cmd[1] = addr & 0xFF;
+		#if defined(ETHERNET_LARGE_BUFFERS) && MAX_SOCK_NUM <= 1
+		cmd[2] = 0x18;                       // 16K buffers
+		#elif defined(ETHERNET_LARGE_BUFFERS) && MAX_SOCK_NUM <= 2
+		cmd[2] = ((addr >> 8) & 0x20) | 0x18; // 8K buffers
+		#elif defined(ETHERNET_LARGE_BUFFERS) && MAX_SOCK_NUM <= 4
+		cmd[2] = ((addr >> 7) & 0x60) | 0x18; // 4K buffers
+		#else
+		cmd[2] = ((addr >> 6) & 0xE0) | 0x18; // 2K buffers
+		#endif
+	}
+	SPI.transfer(cmd, 3);
+	SPI.transfer(buf, len);
+	resetSS();
+	return len;
 }
 
 void W5100Class::execCmdSn(SOCKET s, SockCMD _cmd)
