@@ -14,7 +14,7 @@ int DhcpClass::beginWithDHCP(uint8_t *mac, unsigned long timeout, unsigned long 
     _dhcpT1=0;
     _dhcpT2=0;
     _timeout = timeout;
-    _responseTimeout = responseTimeout;
+    _responseTimeout = responseTimeout;		// Not used anymore
 
     // zero out _dhcpMacAddr
     memset(_dhcpMacAddr, 0, 6);
@@ -23,12 +23,8 @@ int DhcpClass::beginWithDHCP(uint8_t *mac, unsigned long timeout, unsigned long 
     memcpy((void*)_dhcpMacAddr, (void*)mac, 6);
     _dhcp_state = STATE_DHCP_START;
 
-//	uint32_t deb = millis();
     int ret = request_DHCP_lease();
-#if 0
-    uint32_t fin = millis();
-    Serial.printf("DHCP total: %lu ms\n", fin - deb);
-#endif
+
     return ret;
 }
 
@@ -50,7 +46,7 @@ int DhcpClass::request_DHCP_lease()
     _dhcpInitialTransactionId = _dhcpTransactionId;
 
     _dhcpUdpSocket.stop();
-    if (_dhcpUdpSocket.begin(DHCP_CLIENT_PORT) >= MAX_SOCK_NUM ) {	// Pierre 21/12/19
+    if (_dhcpUdpSocket.begin(DHCP_CLIENT_PORT) >= MAX_SOCK_NUM ) {
         // Couldn't get a socket
         //Serial.println("fail _dhcpUdpSocket.begin(DHCP_CLIENT_PORT)");
         return 0;
@@ -65,6 +61,7 @@ int DhcpClass::request_DHCP_lease()
         switch(_dhcp_state) {
         case STATE_DHCP_START:
             _dhcpTransactionId++;
+			//Serial.println("STATE_DHCP_START");
             if ( send_DHCP_MESSAGE(DHCP_DISCOVER, startTime) == true ) {
                 _dhcp_state = STATE_DHCP_DISCOVER;
             }
@@ -72,13 +69,16 @@ int DhcpClass::request_DHCP_lease()
 
         case STATE_DHCP_REREQUEST:
             _dhcpTransactionId++;
+			//Serial.println("STATE_DHCP_REREQUEST");
             if ( send_DHCP_MESSAGE(DHCP_REQUEST, startTime) == true ) {
                 _dhcp_state = STATE_DHCP_REQUEST;
             }
             break;
 
         case STATE_DHCP_DISCOVER:
+			//Serial.println("STATE_DHCP_DISCOVER");
             messageType = parseDHCPResponse(respId);
+			
             if (messageType == DHCP_OFFER) {
                 // We'll use the transaction ID that the offer came with,
                 // rather than the one we were up to
@@ -90,6 +90,7 @@ int DhcpClass::request_DHCP_lease()
             break;
 
         case STATE_DHCP_REQUEST:
+			//Serial.println("STATE_DHCP_REQUEST");
             messageType = parseDHCPResponse(respId);
             if (messageType == DHCP_ACK) {
                 _dhcp_state = STATE_DHCP_LEASED;
@@ -292,15 +293,6 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
             case padOption :	// 0
                 break;
 
-            case endOption :	// 255
-                break;
-
-            case dhcpMessageType :	// 53
-                opt_len = _dhcpUdpSocket.read();
-                type = _dhcpUdpSocket.read();
-				//Serial.print("type: "); Serial.println(type);
-                break;
-
             case subnetMask :	// 1
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read(_dhcpSubnetMask, 4);
@@ -309,16 +301,25 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
             case routersOnSubnet :	// 3
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read(_dhcpGatewayIp, 4);
-				//Serial.print("GW: "); Serial.println(IPAddress(_dhcpGatewayIp));
-				//Serial.print("opt_len: "); Serial.println(opt_len);
                 _dhcpUdpSocket.read((uint8_t *)NULL, opt_len - 4);
                 break;
 
             case dns :	// 6
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read(_dhcpDnsServerIp, 4);
-				//Serial.print("dns: "); Serial.println(IPAddress(_dhcpDnsServerIp));
                 _dhcpUdpSocket.read((uint8_t *)NULL, opt_len - 4);
+                break;
+
+            case dhcpIPaddrLeaseTime :		// 51
+                opt_len = _dhcpUdpSocket.read();
+                _dhcpUdpSocket.read((uint8_t*)&_dhcpLeaseTime, sizeof(_dhcpLeaseTime));
+                _dhcpLeaseTime = ntohl(_dhcpLeaseTime);
+                _renewInSec = _dhcpLeaseTime;
+                break;
+
+            case dhcpMessageType :	// 53
+                opt_len = _dhcpUdpSocket.read();
+                type = _dhcpUdpSocket.read();
                 break;
 
             case dhcpServerIdentifier :		// 54
@@ -332,6 +333,10 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
 				//Serial.print("DHCP: "); Serial.println(IPAddress(_dhcpDhcpServerIp));
                 break;
 
+            case endOption :	// 255
+				_dhcpUdpSocket.flush();		// 29-03-2020
+                break;
+
             case dhcpT1value :		// 58
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read((uint8_t*)&_dhcpT1, sizeof(_dhcpT1));
@@ -342,13 +347,6 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
                 opt_len = _dhcpUdpSocket.read();
                 _dhcpUdpSocket.read((uint8_t*)&_dhcpT2, sizeof(_dhcpT2));
                 _dhcpT2 = ntohl(_dhcpT2);
-                break;
-
-            case dhcpIPaddrLeaseTime :		// 51
-                opt_len = _dhcpUdpSocket.read();
-                _dhcpUdpSocket.read((uint8_t*)&_dhcpLeaseTime, sizeof(_dhcpLeaseTime));
-                _dhcpLeaseTime = ntohl(_dhcpLeaseTime);
-                _renewInSec = _dhcpLeaseTime;
                 break;
 
             default :
