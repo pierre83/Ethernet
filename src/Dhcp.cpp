@@ -1,5 +1,10 @@
 // Copyright 2020 Pierre Casal
 
+// DHCP dialog takes about 3 seconds when everything is fine
+// The duration comes from the fact that the server does a ping to know 
+// if the address is already in use before sending it to the requestor
+
+
 // DHCP Library v0.3 - April 25, 2009
 // Author: Jordan Terrell - blog.jordanterrell.com
 
@@ -8,13 +13,13 @@
 #include "Dhcp.h"
 #include "utility/w5100.h"
 
-int DhcpClass::beginWithDHCP(uint8_t *mac, unsigned long timeout, unsigned long responseTimeout)
+int DhcpClass::beginWithDHCP(uint8_t *mac, unsigned long timeout)//, unsigned long responseTimeout)
 {
     _dhcpLeaseTime=0;
     _dhcpT1=0;
     _dhcpT2=0;
     _timeout = timeout;
-    _responseTimeout = responseTimeout;		// Not used anymore
+    //_responseTimeout = responseTimeout;
 
     // zero out _dhcpMacAddr
     memset(_dhcpMacAddr, 0, 6);
@@ -83,6 +88,7 @@ int DhcpClass::request_DHCP_lease()
                 // We'll use the transaction ID that the offer came with,
                 // rather than the one we were up to
                 _dhcpTransactionId = respId;
+				//Serial.println("DHCP_OFFER");
                 if ( send_DHCP_MESSAGE(DHCP_REQUEST, startTime) == true ) {
                     _dhcp_state = STATE_DHCP_REQUEST;
                 }
@@ -93,6 +99,7 @@ int DhcpClass::request_DHCP_lease()
 			//Serial.println("STATE_DHCP_REQUEST");
             messageType = parseDHCPResponse(respId);
             if (messageType == DHCP_ACK) {
+				//Serial.println("DHCP_ACK");
                 _dhcp_state = STATE_DHCP_LEASED;
                 result = 1;
                 //use default lease time if we didn't get it
@@ -111,6 +118,7 @@ int DhcpClass::request_DHCP_lease()
                 _renewInSec = _dhcpT1;
                 _rebindInSec = _dhcpT2;
             } else if (messageType == DHCP_NAK) {
+				//Serial.println("DHCP_NAK");
                 _dhcp_state = STATE_DHCP_START;
             }
             break;
@@ -260,7 +268,7 @@ uint8_t DhcpClass::parseDHCPResponse(uint32_t& transactionId)
     unsigned long startTime = millis();
 
     while (_dhcpUdpSocket.parsePacket() <= 0) {
-        if ((millis() - startTime) > _responseTimeout) {
+        if ((millis() - startTime) > _timeout) {
             //Serial.println("_dhcpUdpSocket.parsePacket responseTimeout");
             return 255;
         }

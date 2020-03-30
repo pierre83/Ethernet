@@ -131,7 +131,7 @@ uint8_t EthernetClass::socketBegin(uint8_t protocol, uint16_t port)
 
 // **********************************************************************************
 // Multicast version of open a socket (UDP mode)
-// Set fields before open, select IGMP version (v1 or v2)
+// Set fields before opening, select IGMP version (v1 or v2)
 // **********************************************************************************
 uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmpVersion)
 {
@@ -149,7 +149,7 @@ uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t
 		W5100.writeSnDPORT(s, port);
 		W5100.writeSnDHAR(s, mac);
 		W5100.execCmdSn(s, Sock_OPEN);
-		s = socketCheckState(protocol, s, SOCKET_INIT_TIMEOUT);//to be verified
+		s = socketCheckState(protocol, s, SOCKET_INIT_TIMEOUT);
 	}
 	SPI.endTransaction();
 	return s;

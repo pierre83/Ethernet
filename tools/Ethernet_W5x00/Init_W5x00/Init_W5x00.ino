@@ -1,16 +1,27 @@
 
+  // You can use Ethernet.init(pin) to configure the CS pin
+  //Ethernet.init(10);  // Most Arduino shields
+  //Ethernet.init(5);   // MKR ETH shield
+  //Ethernet.init(0);   // Teensy 2.0
+  //Ethernet.init(20);  // Teensy++ 2.0
+  //Ethernet.init(15);  // ESP8266 with Adafruit Featherwing Ethernet
+  //Ethernet.init(33);  // ESP32 with Adafruit Featherwing Ethernet
 
 
 void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
 {
   // Check and start the Ethernet connection:
   int connecte = 0;  // 1= W5x00 initialized, 0 = not initialized, -1= no Ethernet card
+  uint32_t deb, fin;
   if ( !dhcp ) {
     Serial.println(F("Configure using IP address instead of DHCP"));
     connecte = Ethernet.begin(mac, ip, myDns, myDns);	//hope myDns = myGateway
   } else {
     Serial.println(F("Initialize Ethernet with DHCP"));
+	deb = millis();
     connecte = Ethernet.begin(mac);
+	fin = millis();
+	Serial.print(F("DHCP duration "));  Serial.print(fin - deb);  Serial.println("ms");
   }
   if (connecte == -1 ) {
     Serial.println(F("Failed to initialize W5x00 (no hardware"));
@@ -23,16 +34,18 @@ void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
     connecte = Ethernet.begin(mac, ip, myDns, myDns);  //hope myDns = myGateway
   }
   
-  Serial.print(F("\tIP address "));       Serial.println(Ethernet.localIP());
-  Serial.print(F("\tIP gateway "));       Serial.println(Ethernet.gatewayIP());
-  Serial.print(F("\tIP subnet mask "));   Serial.println(Ethernet.subnetMask());
-  Serial.print(F("\tIP DNS "));           Serial.println(Ethernet.dnsServerIP());
+  Serial.println(F("IP parameters:"));
+  Serial.print(F("\tIP address  "));	Serial.println(Ethernet.localIP());
+  Serial.print(F("\tIP gateway  "));	Serial.println(Ethernet.gatewayIP());
+  Serial.print(F("\tSubnet mask "));	Serial.println(Ethernet.subnetMask());
+  Serial.print(F("\tIP DNS      "));	Serial.println(Ethernet.dnsServerIP());
 
   // Check for Ethernet hardware
+  Serial.println(F("Ethernet parameters:"));
   uint8_t hardwareType = Ethernet.hardwareStatus();
-  Serial.print(F("Ethernet type: "));
+  Serial.print(F("\tBoard "));
   if ( hardwareType == EthernetNoHardware) {
-    Serial.println(F("No hardware"));
+    Serial.println(F("\tNo hardware"));
     while (true) {
       delay(1); // Stop here
     }
@@ -48,7 +61,7 @@ void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
   }
 
   uint8_t LinkStatus = Ethernet.linkStatus();
-  Serial.print(F("Ethernet cable: "));
+  Serial.print(F("\tCable "));
   if (LinkStatus == LinkOFF) {
     Serial.println(F("NOT connected"));
     while (true) {
@@ -67,7 +80,7 @@ void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
   }
 
   uint8_t LinkSpeed = Ethernet.linkSpeed();
-  Serial.print(F("Ethernet link speed: "));
+  Serial.print(F("\tSpeed "));
   if (LinkSpeed == Mbs10) {
     Serial.println(F("10Mb/s"));
   }
@@ -79,12 +92,12 @@ void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
   }
 
   uint8_t LinkDuplex = Ethernet.linkDuplex();
-  Serial.print(F("Ethernet link mode: "));
+  Serial.print(F("\tDuplex "));
   if (LinkDuplex == HalfDuplex) {
-    Serial.println(F("Half Duplex"));
+    Serial.println(F("Half"));
   }
   else if (LinkDuplex == FullDuplex) {
-    Serial.println(F("Full Duplex"));
+    Serial.println(F("Full"));
   }
   else {
     Serial.println(F("Unknown"));

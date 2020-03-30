@@ -96,7 +96,7 @@ public:
 	// gain the rest of the configuration through DHCP.
 	// Returns 0 if the DHCP configuration failed, -1 if W5x00 did not initialize 
 	// properly and 1 if it succeeded
-	static int begin(uint8_t *mac, unsigned long timeout = 5000, unsigned long responseTimeout = 5000);
+	static int begin(uint8_t *mac, unsigned long timeout = 3000);//, unsigned long responseTimeout = 5000);
 	static int maintain();
 	
 	static EthernetLinkStatus linkStatus();
@@ -134,9 +134,9 @@ public:
 private:
 
 	// Opens a socket(TCP or UDP or IP_RAW mode)
-	static uint8_t socketBegin(uint8_t protocol, uint16_t port);
+	static uint8_t socketBegin(uint8_t protocol, uint16_t port=0);
 	// Multicast version of open a socket (UDP mode)
-	static uint8_t socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmpVersion);
+	static uint8_t socketBeginMulticast(IPAddress ip, uint16_t port=0, uint8_t igmpVersion=1);
 	// Pick a socket and configure it, called by socketBegin or socketBeginMulticast
 	static uint8_t socketInit(uint8_t protocol, uint16_t port);
 	// Check that the socket status is in the expected mode
@@ -344,6 +344,7 @@ private:
 	unsigned long _responseTimeout;
 	unsigned long _lastCheckLeaseMillis;
 	uint8_t _dhcp_state;
+	
 	EthernetUDP _dhcpUdpSocket;
 
 	int request_DHCP_lease();
@@ -365,7 +366,7 @@ public:
 	IPAddress getDhcpServerIp();
 	IPAddress getDnsServerIp();
 
-	int beginWithDHCP(uint8_t *, unsigned long timeout = 5000, unsigned long responseTimeout = 3000);
+	int beginWithDHCP(uint8_t *, unsigned long timeout = 3000);//, unsigned long responseTimeout = 3000);
 	int checkLease();
 };
 

@@ -34,7 +34,7 @@ DhcpClass* EthernetClass::_dhcp = NULL;
 // the W5x00 with the returned IP parameters
 // Return 1: DHCP & config successfull, 0: DHCP fail, -1: W5x00 failed
 // ****************************************************************************
-int EthernetClass::begin(uint8_t *mac, unsigned long timeout, unsigned long responseTimeout)
+int EthernetClass::begin(uint8_t *mac, unsigned long timeout)//, unsigned long responseTimeout)
 {
     static DhcpClass s_dhcp;
     _dhcp = &s_dhcp;
@@ -47,7 +47,7 @@ int EthernetClass::begin(uint8_t *mac, unsigned long timeout, unsigned long resp
     SPI.endTransaction();
 
     // Now try to get our config info from a DHCP server
-    int ret = _dhcp->beginWithDHCP(mac, timeout, responseTimeout);
+    int ret = _dhcp->beginWithDHCP(mac, timeout);//, responseTimeout);
     if (ret == 1) {
         // We've successfully found a DHCP server and got our configuration
         // infos, so set things accordingly

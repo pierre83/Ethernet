@@ -133,6 +133,8 @@ size_t EthernetUDP::write(const uint8_t *buffer, size_t size)
 // ****************************************************************************
 //		Start processing the next available incoming packet
 //		Returns the size of the packet in bytes, 0= no data
+//		The packet can be uncompletely in the buffer as all datas 
+//		are'nt have not been received at that time
 // ****************************************************************************
 int EthernetUDP::parsePacket()
 {
