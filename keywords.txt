@@ -28,34 +28,34 @@ stop			KEYWORD2
 connected		KEYWORD2
 accept			KEYWORD2
 begin			KEYWORD2
-beginMulticast	KEYWORD2
+beginMulticast		KEYWORD2
 beginPacket		KEYWORD2
 endPacket		KEYWORD2
 parsePacket		KEYWORD2
 remoteIP		KEYWORD2
 remotePort		KEYWORD2
-getSocketNumber	KEYWORD2
+getSocketNumber		KEYWORD2
 getSocketInterrupt	KEYWORD2
 localIP			KEYWORD2
 localPort		KEYWORD2
 maintain		KEYWORD2
 linkStatus		KEYWORD2
-getLinkStatus	KEYWORD2
-hardwareStatus	KEYWORD2
+getLinkStatus		KEYWORD2
+
 MACAddress		KEYWORD2
 subnetMask		KEYWORD2
 gatewayIP		KEYWORD2
 dnsServerIP		KEYWORD2
-setMACAddress	KEYWORD2
+setMACAddress		KEYWORD2
 setLocalIP		KEYWORD2
-setSubnetMask	KEYWORD2
-setGatewayIP	KEYWORD2
-setDnsServerIP	KEYWORD2
+setSubnetMask		KEYWORD2
+setGatewayIP		KEYWORD2
+setDnsServerIP		KEYWORD2
 setRetransmissionTimeout	KEYWORD2
 setRetransmissionCount	KEYWORD2
 setConnectionTimeout	KEYWORD2
 
-linkStatus			KEYWORD2
+getSocketError		KEYWORD2
 hardwareStatus		KEYWORD2
 
 #######################################

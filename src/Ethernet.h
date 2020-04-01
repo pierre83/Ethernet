@@ -104,6 +104,9 @@ public:
 	static EthernetLinkStatus linkDuplex();
 	static EthernetHardwareStatus hardwareStatus();
 
+	// Return errors encoutered during run
+	static uint8_t getSocketError(uint8_t what);
+	
 	// Manual configuration
 	// All 'begin' return -1 if W5x00 did not initialize properly and 1 if it succeeded
 	static int begin(uint8_t *mac, IPAddress ip);
@@ -126,7 +129,9 @@ public:
 
 	void setRetransmissionTimeout(uint16_t milliseconds);
 	void setRetransmissionCount(uint8_t num);
-
+	
+	
+	
 	friend class EthernetClient;
 	friend class EthernetServer;
 	friend class EthernetUDP;

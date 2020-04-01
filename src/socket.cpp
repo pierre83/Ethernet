@@ -58,6 +58,15 @@ typedef struct {
 
 static socketstate_t state[MAX_SOCK_NUM];
 
+typedef struct {
+	uint16_t state;		// Expected state failed
+	uint16_t connect;  	// Connect failed
+	uint16_t init; 		// Init socket failed
+	//uint16_t wrong;		// Unexpected socket
+} socketerror_t;
+
+static socketerror_t error;
+
 static uint16_t getSnTX_FSR(uint8_t s);		// Socket n TX Free Size
 static uint16_t getSnRX_RSR(uint8_t s);		// Socket n RX Received Size
 static void write_data(uint8_t s, uint16_t offset, const uint8_t *data, uint16_t len);
@@ -131,7 +140,7 @@ uint8_t EthernetClass::socketBegin(uint8_t protocol, uint16_t port)
 
 // **********************************************************************************
 // Multicast version of open a socket (UDP mode)
-// Set fields before opening, select IGMP version (v1 or v2)
+// Set fields before opening and select IGMP version (1=v1 or 2=v2)
 // **********************************************************************************
 uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t igmpVersion)
 {
@@ -182,6 +191,7 @@ uint8_t EthernetClass::socketInit(uint8_t protocol, uint16_t port)
 		if (stat == SnSR::FIN_WAIT)  goto closemakesocket;
 		if (stat == SnSR::CLOSING)   goto closemakesocket;
 	}
+	error.init++;
 	//Serial.println("NO socket");
 	return MAX_SOCK_NUM; // all sockets are in use
 	
@@ -223,6 +233,7 @@ uint8_t EthernetClass::socketCheckState(uint8_t expectedState, uint8_t s, uint16
 	W5100.writeSnIR(s, 0xFF);	// Clear possible Socket's interrupts
 	W5100.execCmdSn(s, Sock_CLOSE);  // See W5200 DS pg 46 & pg 54
 	EthernetClass::outputPort[s] = 0;
+	error.state++;
 	return MAX_SOCK_NUM;
 }
 
@@ -300,6 +311,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 	Serial.print("SnIR: "); Serial.println(W5100.readSnIR(s));
 	Serial.print("SnSR: "); Serial.println(status);
 #endif
+	error.connect++;
 	socketClose(s);
 	return 0;
 }
@@ -329,6 +341,24 @@ void EthernetClass::socketClose(uint8_t s)
 	SPI.endTransaction();
 	EthernetClass::outputPort[s] = 0;
 	s = MAX_SOCK_NUM;
+}
+
+// **********************************************************************************
+// Return errors encoutered during run.
+// Used for debugging purpose
+// **********************************************************************************
+uint8_t EthernetClass::getSocketError(uint8_t what)
+{
+	uint8_t whichOne = what % 3;
+	switch (whichOne) {
+		case 0:
+			return error.init;
+		case 1:
+			return error.connect;
+		case 2:
+			return error.state;
+	}
+	return 0;
 }
 
 //===============================================================================
