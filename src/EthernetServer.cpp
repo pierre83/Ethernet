@@ -34,11 +34,11 @@
 void EthernetServer::begin()
 {
 	// Effective start was not checked in the previous versions. It is always the case but each
-	// command is checked separately: it is verified that INIT state is effective after
-	// socketBegin() then LISTEN state is effective after the socketListen() command.
-	// Sometimes there were 2 servers running, this was caused by the time the W5x00 take to change 
-	// state as going from INIT state to LISTEN state was sometimes very slow or never happened in
-	// the worst case.
+	// command is checked separately: it is verified that socket INIT state is effective after
+	// socketBegin() then socket LISTEN state is effective after the socketListen() command.
+	// Sometimes there were 2 servers running, and messages lost, this was caused by the time 
+	// the W5x00 take to change state as going from INIT state to LISTEN state was sometimes
+	// very slow or never happened in the worst case.
 	uint8_t sockindex = Ethernet.socketBegin(SnMR::TCP, _port);
 	if (sockindex >= MAX_SOCK_NUM) return;
 	Ethernet.socketListen(sockindex);
@@ -162,7 +162,7 @@ size_t EthernetServer::write(uint8_t b)
 
 // ********************************************************************
 // As one socket by client, this function writes the same datas 
-// to each client connected to this server's _port. (used by 'chat')
+// to each client connected to this server's _port. (ie: used by 'chat')
 // Returns last amount of bytes written 
 // ********************************************************************
 size_t EthernetServer::write(const uint8_t *buffer, size_t size)

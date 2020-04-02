@@ -12,7 +12,7 @@ Thirdly, UDP was sometimes 'stuck' unable to send or receive anything,
 
 Then faster as much as possible all procedures and calls,
 
-Sidely, this version is more reliable by reporting the majority of events up to the user.
+Sidely, this version reports the majority of events up to the user.
 
 
 
@@ -24,13 +24,7 @@ TX_FSR : not initialized correctly and never used in the library despite the fac
 
 Error in LARGE BUFFER #endif content (w5100.cpp : w5200 init)
 
-Errors in W5500 addresses:(already seen on github)
-
-  GP_REGISTER8 (SIR,    0x0017);    // Sockets Interrupt		// Which socket raised an interrupt
-  
-  GP_REGISTER8 (SIMR,   0x0018);    // Sockets Interrupt Mask	// Which socket is allowed to raise an interrupt
-  
-  GP_REGISTER16(RTR,    0x0019);    // Timeout address
+Errors in W5500 GP_REGISTER addresses (already seen on github) and W5200 GP_REGISTER addresses
 
 
 Changes and corrections:
@@ -49,7 +43,8 @@ Changes and corrections:
 
 7.EthernetServer: (1a-1b) avoid to start another server which was sometimes the case. This avoid also the loss of messages and sometime inexplicable response delays
 
-  
+8.socket: socketRecv() does'nt take into account when there is no datas waiting to be read in the buffer in UDP mode.
+    
 
 bugs created:
 -------------
@@ -105,9 +100,12 @@ Improvements:
 
 14.Socket.cpp: Let the sketch aware in case of W5x00 needs attention (return -1),
 
-15.EthernetServer.cpp: Far more reliable EthernetServer thanks to 1a-1b, uses interrupts to track incoming datas
+15.EthernetServer.cpp: Far more reliable EthernetServer thanks to 1a-1b, uses interrupts to track incoming datas,
 
 16.The W5x00 can be configured for IGMP v1 or v2 version.
+
+17. Added socket.errors (Init state, expected State and Connected state) which help in diagnosis (need more socket, need greater connection timeout ans so on..)
+	 Function: getSocketError( parameter= 0, 1, or 2)
 
 Interrupt management:
 ---------------------
@@ -141,5 +139,3 @@ Errors:
 -------
 Surely, there may still have some errors/improvements to find/make
 
-
- 

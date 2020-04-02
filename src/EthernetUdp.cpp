@@ -51,24 +51,23 @@ uint8_t EthernetUDP::begin(uint16_t port)
 
 // ****************************************************************************
 //		Start building up a packet to send to the remote host specified in host and port
-//		Return 1 = success, -xx = DNS error code
+//		Return: 1 = success, -xx = DNS error code
 // ****************************************************************************
 int EthernetUDP::beginPacket(const char *host, uint16_t port)
 {
-    // Look up the host first
     DNSClient dns;
     IPAddress remote_addr;
 
-    int ret = dns.begin(Ethernet.dnsServerIP());
+    int ret = dns.begin(Ethernet.dnsServerIP());	// Good DNS ?
     if (ret != 1) return ret;
-    ret = dns.getHostByName(host, remote_addr, DNS_TIMEOUT);
+    ret = dns.getHostByName(host, remote_addr, DNS_TIMEOUT);	// Get the IP ?
     if (ret != 1) return ret;
     return beginPacket(remote_addr, port);
 }
 
 // ****************************************************************************
 //		Start building up a packet to send to the remote IP and port
-//		Return 1= success, 0= bad IP, no socket
+//		Return: 1= success, 0= bad IP, no socket
 // ****************************************************************************
 int EthernetUDP::beginPacket(IPAddress ip, uint16_t port)
 {
@@ -224,7 +223,7 @@ int EthernetUDP::peek()
     // Note that none of the pointers are updated. Read can be anywhere...
     // If the user hasn't called parsePacket yet then return nothing otherwise they
     // may get the UDP header
-    if ( _bytesInBuffer == 0 || sockindex >= MAX_SOCK_NUM ) return -1;
+    if ( sockindex >= MAX_SOCK_NUM || _bytesInBuffer == 0 ) return -1;
     return Ethernet.socketPeek(sockindex);
 }
 

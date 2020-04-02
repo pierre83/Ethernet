@@ -90,7 +90,8 @@ private:
 	static IPAddress _dnsServerAddress;
 	static DhcpClass* _dhcp;
 	static uint16_t outputPort[MAX_SOCK_NUM];
-	
+
+
 public:
 	// Initialise the Ethernet shield to use the provided MAC address and
 	// gain the rest of the configuration through DHCP.
@@ -145,23 +146,22 @@ private:
 	// Pick a socket and configure it, called by socketBegin or socketBeginMulticast
 	static uint8_t socketInit(uint8_t protocol, uint16_t port);
 	// Check that the socket status is in the expected mode
-	static uint8_t socketCheckState(uint8_t state, uint8_t s, uint16_t timeout);
+	static uint8_t socketCheckState( uint8_t s, uint8_t state, uint16_t timeout);
 	// Returns the socket's status
 	static uint8_t socketStatus(uint8_t s);
 	// Returns the socket's interrupts
 	static uint8_t socketInterrupt(uint8_t s);
 	// Close socket
 	static void socketClose(uint8_t s);
-	// Establish TCP connection (Active connection: client)
+	// Establish TCP connection (Active connection)
 	static uint8_t socketConnect(uint8_t s, uint8_t * addr, uint16_t port);
 	// disconnect the connection
 	static void socketDisconnect(uint8_t s);
-	// Establish TCP connection (Passive connection: server)
+	// Establish TCP connection (Passive connection)
 	static uint8_t socketListen(uint8_t s);
 	// Send data (TCP)
 	static int socketSend(uint8_t s, const uint8_t * buf, uint16_t len);
-	// Return: freesize ou 0 si buffer full (connected or close_wait state)
-	// or:	-1 = socket not connected
+	// Return: freesize ou 0= buffer full (connected or close_wait state), -1= W5x00 failed
 	static int socketSendAvailable(uint8_t s);
 	// Receive data (TCP), Returns size, or -1 for no data, or 0 if not connected
 	static int socketRecv(uint8_t s, uint8_t * buf, uint16_t len);
@@ -179,7 +179,7 @@ private:
 	static uint16_t socketBufferDataUDP(uint8_t s, uint16_t offset, const uint8_t* buf, uint16_t len);
 	// Send a UDP datagram built up from a sequence of startUDP followed by one or more
 	// calls to bufferData.
-	// return 1 if the datagram was successfully sent, 0 if there was a timeout, -1 if W5x00 is frozen
+	// return 1= datagram sent successfully, 0= timeout, -1= W5x00 failed
 	static int socketSendUDP(uint8_t s);
 	// Initialize the "random" source port number
 	static uint16_t socketPortRand();
@@ -225,11 +225,11 @@ public:
 	// Returns 1 if successful, 0 if there was a problem resolving the hostname or port
 	virtual int beginPacket(const char *host, uint16_t port);
 	// Finish off this packet and send it
-	// Returns 1 if the packet was sent successfully, 0 if there was a timeout or -1 if W5x00 failed
+	// Returns 1= packet sent successfully, 0= timeout, -1= W5x00 failed
 	virtual int endPacket();
 	// Returns: freesize, -1= not UDP mode, 0= buffer full
 	virtual int availableForWrite();
-	// Write a single byte into the packet
+	// Write a single byte into the packet. Returns 1= ok, 0= fail
 	virtual size_t write(uint8_t);
 	// Write size bytes from buffer into the packet
 	virtual size_t write(const uint8_t *buffer, size_t size);

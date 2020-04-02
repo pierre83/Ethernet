@@ -50,22 +50,20 @@ uint16_t W5x00_RTR_RCR_TIMEOUT		= 2000;	// (ms) Retrieved during run from RTR x 
 uint16_t EthernetClass::outputPort[MAX_SOCK_NUM];
 
 typedef struct {
+	uint16_t state;		// Expected state failed
+	uint16_t connect;  	// Connect failed
+	uint16_t init; 		// Init socket failed
+} socketerror_t;
+static socketerror_t error;
+
+typedef struct {
 	uint16_t RX_RSR;	// Number of bytes received
 	uint16_t RX_RD;  	// Address to read
 	uint16_t RX_inc; 	// how much have we advanced RX_RD
 	uint16_t TX_FSR;	// Available size in the TX buffer
 } socketstate_t;
-
 static socketstate_t state[MAX_SOCK_NUM];
 
-typedef struct {
-	uint16_t state;		// Expected state failed
-	uint16_t connect;  	// Connect failed
-	uint16_t init; 		// Init socket failed
-	//uint16_t wrong;		// Unexpected socket
-} socketerror_t;
-
-static socketerror_t error;
 
 static uint16_t getSnTX_FSR(uint8_t s);		// Socket n TX Free Size
 static uint16_t getSnRX_RSR(uint8_t s);		// Socket n RX Received Size
@@ -119,16 +117,16 @@ uint8_t EthernetClass::socketBegin(uint8_t protocol, uint16_t port)
 	W5100.execCmdSn(s, Sock_OPEN);
 	switch ( protocol ) {
 		case SnMR::TCP:
-			s = socketCheckState(SnSR::INIT, s, SOCKET_INIT_TIMEOUT);
+			s = socketCheckState(s, SnSR::INIT, SOCKET_INIT_TIMEOUT);
 			break;
 		case SnMR::UDP:
-			s = socketCheckState(SnSR::UDP, s, SOCKET_INIT_TIMEOUT);
+			s = socketCheckState(s, SnSR::UDP, SOCKET_INIT_TIMEOUT);
 			break;
 		case SnMR::IPRAW:
-			s = socketCheckState(SnSR::IPRAW, s, SOCKET_INIT_TIMEOUT);
+			s = socketCheckState(s, SnSR::IPRAW, SOCKET_INIT_TIMEOUT);
 			break;
 		case SnMR::MACRAW:
-			s = socketCheckState(SnSR::MACRAW, s, SOCKET_INIT_TIMEOUT);
+			s = socketCheckState(s, SnSR::MACRAW, SOCKET_INIT_TIMEOUT);
 			break;
 		default:
 			s = MAX_SOCK_NUM;
@@ -158,7 +156,7 @@ uint8_t EthernetClass::socketBeginMulticast(IPAddress ip, uint16_t port, uint8_t
 		W5100.writeSnDPORT(s, port);
 		W5100.writeSnDHAR(s, mac);
 		W5100.execCmdSn(s, Sock_OPEN);
-		s = socketCheckState(protocol, s, SOCKET_INIT_TIMEOUT);
+		s = socketCheckState(s, protocol, SOCKET_INIT_TIMEOUT);
 	}
 	SPI.endTransaction();
 	return s;
@@ -181,7 +179,7 @@ uint8_t EthernetClass::socketInit(uint8_t protocol, uint16_t port)
 	}
 	//Serial.printf("W5x00socket step2\n");
 	// as a last resort, forcibly close any already closing
-	// Once the process began (called by disconnect() for ex.) 
+	// Once the process began (called by disconnect() for ex.)
 	// the W5x00 completely manage the disconnection process.
 	for ( s=0; s < maxIndex; s++) {
 		uint8_t stat = W5100.readSnSR(s);
@@ -222,7 +220,7 @@ makesocket:
 // **********************************************************************************
 // Check that the socket is in the expected state ( except for connect() )
 // **********************************************************************************
-uint8_t EthernetClass::socketCheckState(uint8_t expectedState, uint8_t s, uint16_t timeout)
+uint8_t EthernetClass::socketCheckState(uint8_t s, uint8_t expectedState, uint16_t timeout)
 {
 	uint32_t stopWait = millis() + timeout;
 	while( millis() < stopWait ) {
@@ -269,7 +267,7 @@ uint8_t EthernetClass::socketListen(uint8_t s)
 {
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	W5100.execCmdSn(s, Sock_LISTEN);
-	uint8_t ret = socketCheckState(SnSR::LISTEN, s, SOCKET_LISTEN_TIMEOUT);
+	uint8_t ret = socketCheckState(s, SnSR::LISTEN, SOCKET_LISTEN_TIMEOUT);
 	SPI.endTransaction();
 	if ( ret  < MAX_SOCK_NUM ) return 1;
 	return 0;
@@ -300,7 +298,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 			SPI.endTransaction();
 			return 1;	// Correct state achieved
 		}
-		// The W5100 sometimes goes to CLOSED state between INIT and ESTABLISHED states
+		// The W5100 sometimes passes thru CLOSED state between INIT and ESTABLISHED states
 		if ( (status == SnSR::CLOSED) && (W5100.getChip() != 51) ) break;
 		yield();
 	}
