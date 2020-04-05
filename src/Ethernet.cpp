@@ -123,9 +123,14 @@ void EthernetClass::setDHCPParameters()
 void EthernetClass::setNetworkParameters(IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet)
 {
     SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-    W5100.setIPAddress(ip._address.bytes);
-    W5100.setGatewayIp(gateway._address.bytes);
-    W5100.setSubnetMask(subnet._address.bytes);
+	// ESP8266
+	W5100.setIPAddress(ip.raw_address());
+	W5100.setGatewayIp(gateway.raw_address());
+	W5100.setSubnetMask(subnet.raw_address());
+	// AVR
+    //W5100.setIPAddress(ip._address.bytes);
+    //W5100.setGatewayIp(gateway._address.bytes);
+    //W5100.setSubnetMask(subnet._address.bytes);
     SPI.endTransaction();
     _dnsServerAddress = dns;
     // Initialize the "random" generator which will provide Ethernet ports number

@@ -10,6 +10,7 @@
 
 void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
 {
+
   // Check and start the Ethernet connection:
   int connecte = 0;  // 1= W5x00 initialized, 0 = not initialized, -1= no Ethernet card
   uint32_t deb, fin;

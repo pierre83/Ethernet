@@ -20,7 +20,8 @@
 
 // Safe for all chips
 #define SPI_ETHERNET_SETTINGS SPISettings(14000000, MSBFIRST, SPI_MODE0)
-
+//#define SPI_ETHERNET_SETTINGS SPISettings(40000000, MSBFIRST, SPI_MODE0)
+ 
 // Safe for W5200 and W5500, but too fast for W5100
 // Uncomment this if you know you'll never need W5100 support.
 //  Higher SPI clock only results in faster transfer to hosts on a LAN
@@ -484,6 +485,7 @@ extern W5100Class W5100;
 #ifndef UTIL_H
 #define UTIL_H
 
+#ifdef (__AVR__)
 #define htons(x) ( (((x)<<8)&0xFF00) | (((x)>>8)&0xFF) )
 #define ntohs(x) htons(x)
 
@@ -492,5 +494,6 @@ extern W5100Class W5100;
                    ((x)>> 8 & 0x0000FF00UL) | \
                    ((x)>>24 & 0x000000FFUL) )
 #define ntohl(x) htonl(x)
-
+#endif
+				   
 #endif

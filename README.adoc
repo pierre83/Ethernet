@@ -44,6 +44,8 @@ Changes and corrections:
 
 8.socket: socketRecv() does'nt take into account when there is no datas waiting to be read in the buffer in UDP mode.
     
+9.Runs without problem on ESP8266 (clock upto 160MHz & SPI upto 40MHz)
+
 
 bugs created:
 -------------

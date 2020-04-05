@@ -111,16 +111,6 @@ int EthernetClient::available()
 }
 
 // ****************************************************************************
-// Read "size" bytes in the provided buffer
-// Returns number of bytes read, -1= no data/invalid socket, 0= connection closed
-// ****************************************************************************
-int EthernetClient::read(uint8_t *buf, size_t size)
-{
-    if (sockindex >= MAX_SOCK_NUM) return 0;
-    return Ethernet.socketRecv(sockindex, buf, size);
-}
-
-// ****************************************************************************
 // Read a byte and returns a data (0-255)
 // No verification
 // ****************************************************************************
@@ -140,6 +130,16 @@ int EthernetClient::read()
     if (sockindex >= MAX_SOCK_NUM) return -1;
     if (Ethernet.socketRecv(sockindex, &b, 1) > 0) return b;
     return -1;
+}
+
+// ****************************************************************************
+// Read "size" bytes in the provided buffer
+// Returns number of bytes read, -1= no data/invalid socket, 0= connection closed
+// ****************************************************************************
+int EthernetClient::read(uint8_t *buf, size_t size)
+{
+    if (sockindex >= MAX_SOCK_NUM) return 0;
+    return Ethernet.socketRecv(sockindex, buf, size);
 }
 
 // ****************************************************************************

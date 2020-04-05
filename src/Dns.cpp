@@ -168,14 +168,13 @@ int DNSClient::getHostByName(const char* aHostname, IPAddress& dnsResult, uint16
             // Close the socket now
             dnsUdp.stop();
             if ( ret == SUCCESS ) break;
-            delay(100);   // Between retries
 		}
-        delay(50);   // Between retries
+        delay(100);   // Between retries
     }
 #if 0
     uint32_t stop = millis();
-    Serial.print("@IP\t");			Serial.println(dnsResult);
-    Serial.print("Temps\t");		Serial.print(stop - (endWait-operation_timeout));
+    Serial.print("@IP\t");		Serial.println(dnsResult);
+    Serial.print("Time\t");		Serial.print(stop - (endWait-operation_timeout));
     Serial.print("ms\nResult\t");	Serial.println(ret);
 #endif
     return ret;
@@ -205,8 +204,8 @@ uint16_t DNSClient::BuildRequest(const char* aName)
     //    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
     // As we only support one request at a time at present, we can simplify
     // some of this header
-    //iRequestId = millis(); // generate a random ID
-    uint16_t iRequestId = 1024 + (millis() & 0x03FF);//randomNumber(); // generate a random ID
+
+    uint16_t iRequestId = 1024 + (millis() & 0x03FF);// generate a 'random'ID
     uint16_t twoByteBuffer;
 
     // FIXME We should also check that there's enough space available to write to, rather
