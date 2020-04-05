@@ -379,7 +379,6 @@ uint16_t DNSClient::ProcessResponse(uint16_t iRequestId, IPAddress& aAddress)
                 dnsUdp.flush();
                 return BAD_SIZE;
             }
-            // FIXME: seeems to lock up here on ESP8266, but why??
             dnsUdp.read(aAddress.raw_address(), 4);
             return SUCCESS;
         } else {

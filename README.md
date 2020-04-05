@@ -13,6 +13,7 @@ Then faster as much as possible all procedures and calls,
 
 Sidely, this version reports the majority of events up to the user.
 
+ESP8266 works smoothly for DNS requests
 
 
 Errors in files:
@@ -140,3 +141,8 @@ Errors:
 -------
 Surely, there may still have some errors/improvements to find/make
 
+Infos:
+-------
+ESP8266:
+1. Remove Ethernet library from the ESP8266 folder
+2. Configure the CS pin properly and add Ethernet.init(CS pin number) in sketches; for ex D2 is GPIO04 so CS = 4
