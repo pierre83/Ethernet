@@ -179,7 +179,7 @@ private:
 	static uint16_t socketBufferDataUDP(uint8_t s, uint16_t offset, const uint8_t* buf, uint16_t len);
 	// Send a UDP datagram built up from a sequence of startUDP followed by one or more
 	// calls to bufferData.
-	// return 1= datagram sent successfully, 0= timeout, -1= W5x00 failed
+	// return 1= datagram sent successfully, 0= timeout, -1= Send failed
 	static int socketSendUDP(uint8_t s);
 	// Initialize the "random" source port number
 	static uint16_t socketPortRand();

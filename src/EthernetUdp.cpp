@@ -79,7 +79,7 @@ int EthernetUDP::beginPacket(IPAddress ip, uint16_t port)
 
 // ****************************************************************************
 //		Command to send the content of the TX buffer
-//		Returns 1: send OK, 0: timeout/bad socket, -1: W5x00 failed
+//		Returns 1: send OK, 0: timeout/bad socket, -1: Send failed
 // ****************************************************************************
 int EthernetUDP::endPacket()
 {

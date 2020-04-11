@@ -1,4 +1,4 @@
-= Improvment fork of the Ethernet Library for Arduino =
+= Ethernet Library for Arduino, ESP8266 & ESP32 =
 =======================================================
 
 This fork was created to fix some W5x00 issues I encountered in my daily use of the library and bring some improvment starting from Paul Stoffregen EThernet libraries for WizNet W5x00
@@ -13,7 +13,6 @@ Then faster as much as possible all procedures and calls,
 
 Sidely, this version reports the majority of events up to the user.
 
-ESP8266 works smoothly for DNS requests
 
 
 Errors in files:

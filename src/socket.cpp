@@ -44,7 +44,7 @@ const uint16_t SOCKET_INIT_TIMEOUT			= 100;
 
 // Values retrieved from RTR & RCR (Retry Time and Retry Count Registers) configuration
 // Following DS, this is the ARPto (default values of RTR & RCR), TCPto = 31.8 secondes
-uint16_t W5x00_RTR_RCR_TIMEOUT		= 2000;	// (ms) Retrieved during run from RTR x RCR 
+uint16_t W5x00_RTR_RCR_TIMEOUT		= 2500;	// (ms) Retrieved during run from RTR x RCR 
 
 
 uint16_t EthernetClass::outputPort[MAX_SOCK_NUM];
@@ -225,7 +225,11 @@ uint8_t EthernetClass::socketCheckState(uint8_t s, uint8_t expectedState, uint16
 	uint32_t stopWait = millis() + timeout;
 	while( millis() < stopWait ) {
 		if ( W5100.readSnSR(s) == expectedState ) return s;	// Correct state achieved
+#if defined (ESP32)
+		delay(2);
+#else
 		yield();
+#endif			
 	}
 	// We never reached the expected state, we cannot go further
 	W5100.writeSnIR(s, 0xFF);	// Clear possible Socket's interrupts
@@ -233,6 +237,48 @@ uint8_t EthernetClass::socketCheckState(uint8_t s, uint8_t expectedState, uint16
 	EthernetClass::outputPort[s] = 0;
 	error.state++;
 	return MAX_SOCK_NUM;
+}
+
+// **********************************************************************************
+// Establish a TCP connection in Active (CLIENT) mode.
+// Setting the desired destination IP and port and connecting to the remote end
+// and check the corresponding status: 0= failed, 1 = success
+// **********************************************************************************
+uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
+{
+	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+	W5100.writeSnDIPR(s, addr);
+	W5100.writeSnDPORT(s, port);
+	W5100.execCmdSn(s, Sock_CONNECT);
+	//The connect-request fails in the following three cases:
+	// 1. When a ARPTO occurs(Sn_IR(3)=‘1’) because the destination
+	// hardware address is not acquired through the ARP-process.
+	// 2. When a SYN/ACK packet is not received and TCPTO occurs(Sn_IR(3)=‘1' )
+	// 3. When a RST packet is received instead of a SYN/ACK packet.
+	// In these cases, Sn_SR is changed to SOCK_CLOSED.
+	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
+	while( millis() < stopWait ) {
+		uint8_t status = W5100.readSnSR(s);
+		SPI.endTransaction();
+		if ( status == SnSR::ESTABLISHED ) {
+			return 1;	// Correct state achieved
+		}
+		// The W5100 sometimes passes thru CLOSED state between INIT and ESTABLISHED states
+		if ( status == SnSR::CLOSED ) {
+			if ( W5100.getChip() != 51 ) break;
+		}
+#if defined (ESP32)
+		// This is limiting the transactionnal throughput but without, this is not working
+		// is there a link with SPI speed ?
+		delay(1);		//Do not remove (ESP32 v 1.04)
+#else
+		yield();
+#endif
+		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+	}
+	error.connect++;
+	socketClose(s);
+	return 0;
 }
 
 // **********************************************************************************
@@ -270,47 +316,6 @@ uint8_t EthernetClass::socketListen(uint8_t s)
 	uint8_t ret = socketCheckState(s, SnSR::LISTEN, SOCKET_LISTEN_TIMEOUT);
 	SPI.endTransaction();
 	if ( ret  < MAX_SOCK_NUM ) return 1;
-	return 0;
-}
-
-// **********************************************************************************
-// Establish a TCP connection in Active (CLIENT) mode.
-// Setting the desired destination IP and port and connecting to the remote end
-// and check the corresponding status: 0= failed, 1 = success
-// **********************************************************************************
-uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
-{
-	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	W5100.writeSnDIPR(s, addr);
-	W5100.writeSnDPORT(s, port);
-	W5100.execCmdSn(s, Sock_CONNECT);
-	//The connect-request fails in the following three cases:
-	// 1. When a ARPTO occurs(Sn_IR(3)=‘1’) because the destination
-	// hardware address is not acquired through the ARP-process.
-	// 2. When a SYN/ACK packet is not received and TCPTO occurs(Sn_IR(3)=‘1' )
-	// 3. When a RST packet is received instead of a SYN/ACK packet.
-	// In these cases, Sn_SR is changed to SOCK_CLOSED.
-	uint8_t status = 0;
-	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
-	while( millis() < stopWait ) {
-		status = W5100.readSnSR(s);
-		if ( status == SnSR::ESTABLISHED ) {
-			SPI.endTransaction();
-			return 1;	// Correct state achieved
-		}
-		// The W5100 sometimes passes thru CLOSED state between INIT and ESTABLISHED states
-		if ( (status == SnSR::CLOSED) && (W5100.getChip() != 51) ) break;
-		yield();
-	}
-	SPI.endTransaction();
-#if 0
-	uint32_t fail = millis() - (stopWait - W5x00_RTR_RCR_TIMEOUT);
-	Serial.print("Fail: "); Serial.print(fail); Serial.println("ms");
-	Serial.print("SnIR: "); Serial.println(W5100.readSnIR(s));
-	Serial.print("SnSR: "); Serial.println(status);
-#endif
-	error.connect++;
-	socketClose(s);
 	return 0;
 }
 
@@ -570,33 +575,28 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 	write_data(s, 0, (uint8_t *)buf, ret);	// copy data
 	W5100.execCmdSn(s, Sock_SEND);			// send data
 
-	stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;	// Will Timeout before TCPto (31.8sec)
+	stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;	// Will Timeout before TCPto (31.8sec default)
 	// Wait for operation complete
-	while (1) {
-		uint8_t status = W5100.readSnIR(s);
-		if ( status & SnIR::SEND_OK ) {		// Sent OK
-			W5100.writeSnIR(s, SnIR::SEND_OK);
-			// As we did'nt count +ret, we don't count -ret
+
+	while ( (W5100.readSnIR(s) & SnIR::SEND_OK) != SnIR::SEND_OK ) {
+		if ( millis() > stopWait ) {	// Default ARPto of W5x00 is 1618ms (Configured with RTR-RCR)
+			getSnTX_FSR(s);
+			ret = -1;
 			break;
 		}
 		// TIMEOUT Interrupts is set when TCPTO occurs,
 		// The time of final timeout (TCPTO) of TCP retransmission is 31.8sec...
 		// When TCPTO occurs, it is changed to SOCK_CLOSED regardless of the previous value.
-		if (( W5100.readSnSR(s) == SnSR::CLOSED ) || ( status & SnIR::TIMEOUT ) ) {
-			W5100.writeSnIR(s, SnIR::SEND_OK | SnIR::TIMEOUT);
+		if ( W5100.readSnSR(s) == SnSR::CLOSED ) {
 			getSnTX_FSR(s);
 			ret = 0;
-			break;
-		}
-		if ( millis() > stopWait ) {	// Default ARPto of W5x00 is 1618ms (Configured with RTR-RCR)
-			getSnTX_FSR(s);
-			ret = -1;
 			break;
 		}
 		SPI.endTransaction();
 		yield();
 		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	}
+	W5100.writeSnIR(s, 0xFF);			// SnIR::SEND_OK | SnIR::TIMEOUT can be closed too
 	SPI.endTransaction();
 #if 0
 	uint32_t elapsed = millis() - (stopWait-W5x00_RTR_RCR_TIMEOUT);
@@ -672,42 +672,40 @@ uint16_t EthernetClass::socketBufferDataUDP(uint8_t s, uint16_t offset, const ui
 // ************************************************************************************
 // Send a UDP datagram built up from a sequence of begin() followed by one
 // or more calls to bufferDataUDP using write(..) or write().
-// Return: 1= success, 0= timeout, -1= W5x00 failed(read interrupts if using them)
+// Return: 1= success, 0= timeout, -1= Send timeout
 // ************************************************************************************
 int EthernetClass::socketSendUDP(uint8_t s)
 {
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	W5100.execCmdSn(s, Sock_SEND);
-
+	
 	// Wait for op complete
-	int ret = -1;		// W5x00 failed
+	int ret = -1;		// Send failed
 	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
-	while (millis() < stopWait ) {			// W5x00 failed
+	while (millis() < stopWait ) {			// Send timeout
 		uint8_t status = W5100.readSnIR(s);
+		SPI.endTransaction();
 		if ( ( status & SnIR::SEND_OK ) == SnIR::SEND_OK ) {
-			//W5100.writeSnIR(s, SnIR::SEND_OK);
-			//Serial.printf("sendUDP ok\n");
 			ret = 1;
 			break;
 		}
 		// ARPTO occurs (Sn_IR(s)=‘1’) because the Destination Hardware Address is not
 		// acquired through the ARP process. In case of UDP or IPRAW mode it goes back
 		// to the previous status(SOCK_UDP or SOCK_IPRAW)
-		if ( ( status & SnIR::TIMEOUT ) == SnIR::TIMEOUT ) { // Only on first ARP request
-			//W5100.writeSnIR(s, SnIR::TIMEOUT);			// then the address is memorized
-			ret = 0;									// except id FARP is set (W5500)
-			break;
+		if ( ( status & SnIR::TIMEOUT ) == SnIR::TIMEOUT ) { // Once ARP request succeeded, the address is memorized
+			ret = 0;						// and ARP timeout never happens again so we must check
+			break;							// the elapsed time. Except if Force ARP is set (W5500)
 		}
-		SPI.endTransaction();
 		yield();
 		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	}
+	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+	W5100.writeSnIR(s, 0xFF);		// (SnIR::SEND_OK || SnIR::TIMEOUT)
 	getSnTX_FSR(s);  // => update state[s].TX_FSR
-	W5100.writeSnIR(s, (SnIR::SEND_OK || SnIR::TIMEOUT));
 	SPI.endTransaction();
 #if 0
 	uint32_t elapsed = millis() - (stopWait - W5x00_RTR_RCR_TIMEOUT);
-	if ( ret == -1 ) Serial.printf("W5x00 issue: %lums", elapsed);
+	if ( ret == -1 ) Serial.printf("Send failed: %lums", elapsed);
 	if ( ret == 0 )  Serial.printf("sendUDP timeout: %lums", elapsed);
 #endif
 	return ret;

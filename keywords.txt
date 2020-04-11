@@ -16,6 +16,7 @@ EthernetUDP		KEYWORD1
 # Methods and Functions (KEYWORD2)
 #######################################
 
+init			KEYWORD2
 status			KEYWORD2
 connect			KEYWORD2
 write			KEYWORD2

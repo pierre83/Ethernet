@@ -47,7 +47,8 @@
 #define SS_PIN_DEFAULT  10
 #endif
 
-#ifndef SPI_HAS_TRANSFER_BUF
+	
+#ifndef SPI_HAS_TRANSFER_BUFFER
 #define SPI_BUFFER_SIZE 18
 #else
 #define SPI_BUFFER_SIZE 4
@@ -124,7 +125,7 @@ uint8_t W5100Class::init(void)
 	// where it won't recover, unless given a reset pulse.
 	if (isW5200()) {
 		CH_BASE_MSB = 0x40;
-		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
+		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 8;
 #ifdef ENABLE_INTERRUPTS
 		enableSocketsInterrupt(0x0F);		// enable all sockets interrupt
 		clearSocketsInterrupt(0xFF);
@@ -156,7 +157,7 @@ uint8_t W5100Class::init(void)
 	} else if (isW5500()) {
 		CH_BASE_MSB = 0x10;
 		OffsetAddressMapping = true;
-		W5x00_RTR_RCR_TIME = (readRTR_W55() * (1 + readRCR_W55()) ) / 9;
+		W5x00_RTR_RCR_TIME = (readRTR_W55() * (1 + readRCR_W55()) ) / 8;
 #ifdef ENABLE_INTERRUPTS
 		enableSocketsInterrupt(0xFF);		// enable all sockets interrupt
 		clearSocketsInterrupt(0xFF);
@@ -189,7 +190,7 @@ uint8_t W5100Class::init(void)
 	// register for identification, so we check this last.
 	} else if (isW5100()) {
 		CH_BASE_MSB = 0x04;
-		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 9;
+		W5x00_RTR_RCR_TIME = (readRTR_W5x() * (1 + readRCR_W5x()) ) / 8;
 #ifdef ETHERNET_LARGE_BUFFERS
 #if MAX_SOCK_NUM <= 1
 		SSIZE = 8192;
@@ -217,6 +218,7 @@ uint8_t W5100Class::init(void)
 	}
 
 	SPI.endTransaction();
+	//Serial.print("W5x00_RTR_RCR_TIME: ");	Serial.println(W5x00_RTR_RCR_TIME);
 	return chip; // init result
 }
 
@@ -399,7 +401,7 @@ uint16_t W5100Class::write(uint16_t addr, const uint8_t *buf, uint16_t len)
 			SPI.transfer(cmd, len + 4);
 		} else {
 			SPI.transfer(cmd, 4);
-#ifdef SPI_HAS_TRANSFER_BUF
+#ifdef SPI_HAS_TRANSFER_BUFFER
 			SPI.transfer(buf, NULL, len);
 #else
 			uint16_t i;
@@ -449,8 +451,11 @@ uint16_t W5100Class::write(uint16_t addr, const uint8_t *buf, uint16_t len)
 			SPI.transfer(cmd, len + 3);
 		} else {
 			SPI.transfer(cmd, 3);
-#ifdef SPI_HAS_TRANSFER_BUF
-			SPI.transfer(buf, NULL, len);
+#ifdef SPI_HAS_TRANSFER_BUFFER
+			/*for ( uint16_t i = 0; i < len; i++) {
+				SPI.transfer(buf[i]);
+			}*/
+			SPI.writeBytes(buf, len);
 #else
 			uint16_t i;
 			for ( i = 0; i < len; i += SPI_BUFFER_SIZE) {

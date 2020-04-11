@@ -18,10 +18,21 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-// Safe for all chips
-#define SPI_ETHERNET_SETTINGS SPISettings(14000000, MSBFIRST, SPI_MODE0)
-//#define SPI_ETHERNET_SETTINGS SPISettings(40000000, MSBFIRST, SPI_MODE0)
+// Require Ethernet.h, because we need MAX_SOCK_NUM
+#ifndef ethernet_h_
+	#error "Ethernet.h must be included before w5100.h"
+#endif
  
+#if defined(__AVR__)
+	// Safe for all chips
+	#define SPI_ETHERNET_SETTINGS SPISettings(14000000, MSBFIRST, SPI_MODE0)
+#elif defined(ESP8266)
+	#define SPI_ETHERNET_SETTINGS SPISettings(40000000, MSBFIRST, SPI_MODE0)
+#elif defined(ESP32)
+	// ESP32 master clock is divided from APB clock (80MHz), so only 80, 40, 26.6, 20, 16, 13.3, 11.4, 10 MHz and lower ...
+	#define SPI_ETHERNET_SETTINGS SPISettings(20000000, MSBFIRST, SPI_MODE0)
+#endif
+				   
 // Safe for W5200 and W5500, but too fast for W5100
 // Uncomment this if you know you'll never need W5100 support.
 //  Higher SPI clock only results in faster transfer to hosts on a LAN
@@ -29,28 +40,32 @@
 //  the TCP window size & packet loss determine your overall speed.
 //#define SPI_ETHERNET_SETTINGS SPISettings(30000000, MSBFIRST, SPI_MODE0)
 
-
-// Require Ethernet.h, because we need MAX_SOCK_NUM
-#ifndef ethernet_h_
-#error "Ethernet.h must be included before w5100.h"
-#endif
-
-
 // Arduino 101's SPI can not run faster than 8 MHz.
 #if defined(ARDUINO_ARCH_ARC32)
-#undef SPI_ETHERNET_SETTINGS
-#define SPI_ETHERNET_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE0)
+	#undef SPI_ETHERNET_SETTINGS
+	define SPI_ETHERNET_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE0)
 #endif
 
 // Arduino Zero can't use W5100-based shields faster than 8 MHz
 // https://github.com/arduino-libraries/Ethernet/issues/37#issuecomment-408036848
 // W5500 does seem to work at 12 MHz.  Delete this if only using W5500
 #if defined(__SAMD21G18A__)
-#undef SPI_ETHERNET_SETTINGS
-#define SPI_ETHERNET_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE0)
+	#undef SPI_ETHERNET_SETTINGS
+	#define SPI_ETHERNET_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE0)
 #endif
 
 
+#if not defined(ESP8266)
+	#define htons(x) ( (((x)<<8)&0xFF00) | (((x)>>8)&0xFF) )
+	#define ntohs(x) htons(x)
+	#define htonl(x) ( ((x)<<24 & 0xFF000000UL) | \
+                   ((x)<< 8 & 0x00FF0000UL) | \
+                   ((x)>> 8 & 0x0000FF00UL) | \
+                   ((x)>>24 & 0x000000FFUL) )
+	#define ntohl(x) htonl(x)
+#endif
+
+				   
 typedef uint8_t SOCKET;
 
 class SnMR {
@@ -464,6 +479,20 @@ private:
 	inline static void resetSS() {
 		*(ss_pin_reg+6) = ss_pin_mask;
 	}
+#elif defined (ESP32)
+	inline static void initSS() {
+		pinMode(ss_pin, OUTPUT);
+	}
+	inline static void setSS() {
+		//GPIO.out_w1tc = ((uint32_t)1 << ss_pin);
+		digitalWrite(ss_pin, LOW);
+		//for (volatile uint8_t i = 0; i < 1; i++);
+	}
+	inline static void resetSS() {
+		//GPIO.out_w1ts = ((uint32_t)1 << ss_pin);
+		digitalWrite(ss_pin, HIGH);
+		//for (volatile uint8_t i = 0; i < 1; i++);
+	}
 #else
 	inline static void initSS() {
 		pinMode(ss_pin, OUTPUT);
@@ -485,15 +514,6 @@ extern W5100Class W5100;
 #ifndef UTIL_H
 #define UTIL_H
 
-#ifdef (__AVR__)
-#define htons(x) ( (((x)<<8)&0xFF00) | (((x)>>8)&0xFF) )
-#define ntohs(x) htons(x)
 
-#define htonl(x) ( ((x)<<24 & 0xFF000000UL) | \
-                   ((x)<< 8 & 0x00FF0000UL) | \
-                   ((x)>> 8 & 0x0000FF00UL) | \
-                   ((x)>>24 & 0x000000FFUL) )
-#define ntohl(x) htonl(x)
-#endif
 				   
 #endif

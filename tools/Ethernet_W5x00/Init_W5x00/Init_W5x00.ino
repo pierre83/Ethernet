@@ -22,10 +22,10 @@ void Ethernet_init(bool dhcp, uint8_t mac[], IPAddress ip, IPAddress myDns)
 	deb = millis();
     connecte = Ethernet.begin(mac);
 	fin = millis();
-	Serial.print(F("DHCP duration "));  Serial.print(fin - deb);  Serial.println("ms");
+	Serial.print(F("DHCP duration "));  Serial.print(fin - deb);  Serial.println("ms (including W5x00 reset time)");
   }
   if (connecte == -1 ) {
-    Serial.println(F("Failed to initialize W5x00 (no hardware"));
+    Serial.println(F("Failed to initialize W5x00 (no hardware)"));
     while (true) {
       delay(1); // Stop here
     }
