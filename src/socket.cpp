@@ -259,25 +259,25 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
 	while( millis() < stopWait ) {
 		uint8_t status = W5100.readSnSR(s);
-		SPI.endTransaction();
-		if ( status == SnSR::ESTABLISHED ) {
-			return 1;	// Correct state achieved
-		}
 		// The W5100 sometimes passes thru CLOSED state between INIT and ESTABLISHED states
 		if ( status == SnSR::CLOSED ) {
 			if ( W5100.getChip() != 51 ) break;
 		}
+		SPI.endTransaction();		//Do not move
+		if ( status == SnSR::ESTABLISHED ) {
+			return 1;	// Correct state achieved
+		}
 #if defined (ESP32)
 		// This is limiting the transactionnal throughput but without, this is not working
 		// is there a link with SPI speed ?
-		delay(1);		//Do not remove (ESP32 v 1.04)
-#else
-		yield();
+		delay(1);		//Do not remove (ESP32 v1.04)
 #endif
+		yield();
 		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	}
-	error.connect++;
+	SPI.endTransaction();
 	socketClose(s);
+	error.connect++;
 	return 0;
 }
 
@@ -339,7 +339,7 @@ void EthernetClass::socketDisconnect(uint8_t s)
 void EthernetClass::socketClose(uint8_t s)
 {
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	W5100.writeSnIR(s, 0xFF);	// Clear the remained Socket's interrupts
+	W5100.writeSnIR(s, 0xFF);	// Clear the remaining Socket's interrupts
 	W5100.execCmdSn(s, Sock_CLOSE);
 	SPI.endTransaction();
 	EthernetClass::outputPort[s] = 0;
@@ -596,7 +596,9 @@ int EthernetClass::socketSend(uint8_t s, const uint8_t * buf, uint16_t len)
 		yield();
 		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	}
-	W5100.writeSnIR(s, 0xFF);			// SnIR::SEND_OK | SnIR::TIMEOUT can be closed too
+#ifndef ENABLE_INTERRUPTS
+	W5100.writeSnIR(s, 0xFF);		// (SnIR::SEND_OK || SnIR::TIMEOUT) & CLOSED
+#endif
 	SPI.endTransaction();
 #if 0
 	uint32_t elapsed = millis() - (stopWait-W5x00_RTR_RCR_TIMEOUT);
@@ -684,7 +686,6 @@ int EthernetClass::socketSendUDP(uint8_t s)
 	uint32_t stopWait = millis() + W5x00_RTR_RCR_TIMEOUT;
 	while (millis() < stopWait ) {			// Send timeout
 		uint8_t status = W5100.readSnIR(s);
-		SPI.endTransaction();
 		if ( ( status & SnIR::SEND_OK ) == SnIR::SEND_OK ) {
 			ret = 1;
 			break;
@@ -696,11 +697,13 @@ int EthernetClass::socketSendUDP(uint8_t s)
 			ret = 0;						// and ARP timeout never happens again so we must check
 			break;							// the elapsed time. Except if Force ARP is set (W5500)
 		}
+		SPI.endTransaction();
 		yield();
 		SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
 	}
-	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	W5100.writeSnIR(s, 0xFF);		// (SnIR::SEND_OK || SnIR::TIMEOUT)
+#ifndef ENABLE_INTERRUPTS
+	W5100.writeSnIR(s, 0xFF);		// (SnIR::SEND_OK || SnIR::TIMEOUT) & CLOSED
+#endif
 	getSnTX_FSR(s);  // => update state[s].TX_FSR
 	SPI.endTransaction();
 #if 0

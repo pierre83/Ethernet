@@ -49,9 +49,9 @@
 
 	
 #ifndef SPI_HAS_TRANSFER_BUFFER
-#define SPI_BUFFER_SIZE 18
+   #define SPI_BUFFER_SIZE 18
 #else
-#define SPI_BUFFER_SIZE 4
+   #define SPI_BUFFER_SIZE 4
 #endif
 
 // W5100 controller instance
@@ -452,9 +452,6 @@ uint16_t W5100Class::write(uint16_t addr, const uint8_t *buf, uint16_t len)
 		} else {
 			SPI.transfer(cmd, 3);
 #ifdef SPI_HAS_TRANSFER_BUFFER
-			/*for ( uint16_t i = 0; i < len; i++) {
-				SPI.transfer(buf[i]);
-			}*/
 			SPI.writeBytes(buf, len);
 #else
 			uint16_t i;
