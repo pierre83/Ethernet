@@ -49,12 +49,13 @@
 // can really help with UDP protocols like Artnet.  In theory larger
 // buffers should allow faster TCP over high-latency links, but this
 // does not always seem to work in practice (maybe Wiznet bugs?)
+
 //#define ETHERNET_LARGE_BUFFERS
 
 // If it is desired to manage the card using interrupts:
 // Connect the card 'int' to any digital pin interrupt compatible(or not)
 // then manage interrupts reported and restart web server as necessary.
-// do not use server.available() or server.accept()
+
 //#define ENABLE_INTERRUPTS
 
 
@@ -85,6 +86,8 @@ class EthernetClient;
 class EthernetServer;
 class DhcpClass;
 
+
+// **********************************************************************************
 class EthernetClass {
 private:
 	static IPAddress _dnsServerAddress;
@@ -95,8 +98,7 @@ private:
 public:
 	// Initialise the Ethernet shield to use the provided MAC address and
 	// gain the rest of the configuration through DHCP.
-	// Returns 0 if the DHCP configuration failed, -1 if W5x00 did not initialize 
-	// properly and 1 if it succeeded
+	// Returns 0= DHCP configuration failed, -1= W5x00 did not initialize, 1= success
 	static int begin(uint8_t *mac, unsigned long timeout = 3000);//, unsigned long responseTimeout = 5000);
 	static int maintain();
 	
@@ -151,6 +153,8 @@ private:
 	static uint8_t socketStatus(uint8_t s);
 	// Returns the socket's interrupts
 	static uint8_t socketInterrupt(uint8_t s);
+	// Socket clear interrupts
+	static void socketClearInterrupts(uint8_t s, uint8_t interrupts);
 	// Close socket
 	static void socketClose(uint8_t s);
 	// Establish TCP connection (Active connection)
@@ -196,6 +200,7 @@ extern EthernetClass Ethernet;
 
 
 
+// **********************************************************************************
 class EthernetUDP : public UDP {
 private:
 	uint16_t _port; // local port to listen on
@@ -265,6 +270,7 @@ public:
 
 
 
+// **********************************************************************************
 class EthernetClient : public Client {
 public:
 	EthernetClient() : sockindex(MAX_SOCK_NUM), _timeout(1000) { }
@@ -305,6 +311,7 @@ private:
 
 
 
+// **********************************************************************************
 class EthernetServer : public Server {
 private:
 	uint16_t _port;
@@ -323,6 +330,7 @@ public:
 
 
 
+// **********************************************************************************
 class DhcpClass {
 private:
 	uint32_t _dhcpInitialTransactionId;
@@ -356,13 +364,8 @@ private:
 	void reset_DHCP_lease();
 	void printByte(char *, uint8_t);
 
-	// new library
 	bool send_DHCP_MESSAGE(uint8_t, uint32_t);
 	uint8_t parseDHCPResponse( uint32_t& transactionId);
-	// old library
-	//uint8_t parseDHCPResponse(unsigned long responseTimeout, uint32_t& transactionId);
-	//void presend_DHCP();
-	//void send_DHCP_MESSAGE(uint8_t messageType, uint16_t secondsElapsed);
 	
 public:
 	IPAddress getLocalIp();
@@ -374,8 +377,6 @@ public:
 	int beginWithDHCP(uint8_t *, unsigned long timeout = 3000);//, unsigned long responseTimeout = 3000);
 	int checkLease();
 };
-
-
 
 
 

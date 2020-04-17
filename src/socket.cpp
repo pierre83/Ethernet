@@ -260,6 +260,7 @@ uint8_t EthernetClass::socketConnect(uint8_t s, uint8_t * addr, uint16_t port)
 	while( millis() < stopWait ) {
 		uint8_t status = W5100.readSnSR(s);
 		// The W5100 sometimes passes thru CLOSED state between INIT and ESTABLISHED states
+		// So, we're abliged to verify if the operation has timed out
 		if ( status == SnSR::CLOSED ) {
 			if ( W5100.getChip() != 51 ) break;
 		}
@@ -306,6 +307,16 @@ uint8_t EthernetClass::socketInterrupt(uint8_t s)
 }
 
 // **********************************************************************************
+// Socket clear interrupts
+// **********************************************************************************
+void EthernetClass::socketClearInterrupts(uint8_t s, uint8_t interrupts)
+{
+	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+	W5100.writeSnIR(s, interrupts);
+	SPI.endTransaction();
+}
+
+// **********************************************************************************
 // Place the socket in listening (SERVER) mode
 // and check the corresponding status:0= failed, 1 = success
 // **********************************************************************************
@@ -339,8 +350,8 @@ void EthernetClass::socketDisconnect(uint8_t s)
 void EthernetClass::socketClose(uint8_t s)
 {
 	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	W5100.writeSnIR(s, 0xFF);	// Clear the remaining Socket's interrupts
 	W5100.execCmdSn(s, Sock_CLOSE);
+	W5100.writeSnIR(s, 0xFF);	// Clear the remaining Socket's interrupts
 	SPI.endTransaction();
 	EthernetClass::outputPort[s] = 0;
 	s = MAX_SOCK_NUM;

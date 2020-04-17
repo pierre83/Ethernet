@@ -90,6 +90,7 @@ EthernetClient EthernetServer::available()
 						// The status becomes LAST_ACK for short time
 						// The W5x00 is now waiting from an ACK from the other end to close this socket
 					}
+					// We wait for the W5x00 to close the socket and don't set outputPort[i] = 0
 					break;
 				case SnSR::CLOSED:
 					EthernetClass::outputPort[i] = 0;

@@ -124,7 +124,7 @@ Interrupt management:
   
 4.Clear the socket interrupt register
 
-  static void clearSocketInterrupt(uint8_t s, uint8_t value)
+  static void socketClearInterrupts(uint8_t s, uint8_t interrupts)
   
 5.Return the socket's interrupt register
 

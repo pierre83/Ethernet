@@ -133,14 +133,15 @@ size_t EthernetUDP::write(const uint8_t *buffer, size_t size)
 //		Start processing the next available incoming packet
 //		Returns the size of the packet in bytes, 0= no data
 //		The packet can be uncompletely in the buffer as all datas 
-//		are'nt have not been received at that time
+//		are'nt have not been received at that time.
+//		Also get the sender address and port
 // ****************************************************************************
 int EthernetUDP::parsePacket()
 {
     const uint8_t HEADER_LENGTH = 8;
     if (sockindex >= MAX_SOCK_NUM) return 0;
-    if ( ( Ethernet.socketInterrupt(sockindex) & SnIR::RECV ) == SnIR::RECV ) {
-        //if ( Ethernet.socketRecvAvailable(sockindex) >= HEADER_LENGTH ) {
+    //if ( ( Ethernet.socketInterrupt(sockindex) & SnIR::RECV ) == SnIR::RECV ) {
+    if ( Ethernet.socketRecvAvailable(sockindex) >= HEADER_LENGTH ) {
         //HACK - hand-parse the UDP packet using TCP recv method
         uint8_t headerBuffer[HEADER_LENGTH];
         //read 8 header bytes and get IP, port and packet length from it
@@ -150,7 +151,8 @@ int EthernetUDP::parsePacket()
             _remotePort = (_remotePort << 8) + headerBuffer[5];
             _bytesInBuffer  = headerBuffer[6];
             _bytesInBuffer  = (_bytesInBuffer << 8) + headerBuffer[7];
-            // Return amount of available data
+            // Return amount of potentialy available datas
+			// Maybe not yet in the buffer, take care...
             return _bytesInBuffer;
         }
         // No data or truncated packet
@@ -161,13 +163,14 @@ int EthernetUDP::parsePacket()
 }
 
 // ****************************************************************************
-//		Return number of bytes available in the RCV buffer
-//		Return 0 if parsePacket hasn't been called yet or bad socket
+//		Return the real available quantity of data
+//		The packet length is done by parsePacket but this amount may not be
+//		completely arrived in the RCV buffer
 // ****************************************************************************
 int EthernetUDP::available()
 {
     if (sockindex >= MAX_SOCK_NUM) return 0;
-    return _bytesInBuffer;
+    return Ethernet.socketRecvAvailable(sockindex);
 }
 
 // ****************************************************************************
@@ -237,6 +240,7 @@ void EthernetUDP::flush()
     uint32_t stopWait = millis() + WAIT_FOR_FLUSH;
     while ( millis() < stopWait ) {
         int ret = Ethernet.socketRecvAvailable(sockindex);
+		// And clear interrupt
         if ( Ethernet.socketRecv(sockindex, (uint8_t *)NULL, ret) <= 0 ) break;
     }
 

@@ -50,9 +50,9 @@
 #define TRUNCATED        -3
 #define INVALID_RESPONSE -4
 #define BAD_RESPONSE	 -5
-#define INV_RESPONSE 	 -6
+#define NO_ANSWER	 	 -6
 #define BAD_SIZE		 -7
-#define NO_ANSWER		 -8
+#define NO_VALID_ANSWER	 -8
 
 
 // *******************************************************
@@ -151,9 +151,9 @@ int DNSClient::getHostByName(const char* aHostname, IPAddress& aResult, uint16_t
 								ret = INVALID_SERVER;
 							} else {
 								// Process the packet
-								ret = ProcessResponse(iRequestId, aResult);
+								ret = ProcessResponse(iRequestId, aResult, packetSize);
 							}
-							break;	// exit if something received
+							break;	// Good or bad, exit anyway
 						}
 						delay(5);
 					}
@@ -261,7 +261,7 @@ uint16_t DNSClient::BuildRequest(const char* aName)
 // *******************************************************
 // Analyze the DNS answer
 // *******************************************************
-uint16_t DNSClient::ProcessResponse(uint16_t iRequestId, IPAddress& aAddress)
+uint16_t DNSClient::ProcessResponse(uint16_t iRequestId, IPAddress& aAddress, int packetSize)
 {
 	// We've had a reply!
 	// Read the UDP header
@@ -270,16 +270,19 @@ uint16_t DNSClient::ProcessResponse(uint16_t iRequestId, IPAddress& aAddress)
 		uint16_t word[DNS_HEADER_SIZE/2];
 	} header;
 
-	// Check that it's a response from the right server and the right port
-	if ( (dnsDNSServer != dnsUdp.remoteIP()) || (dnsUdp.remotePort() != DNS_PORT) ) {
-		// It's not from who we expected
-		return INVALID_SERVER;
+	// If available less than packet lentgh, allow little delay to get more datas...
+	// Smaller packet size seen is 46 bytes (Intranet) and 97 (Internet)
+	int bytesInBuffer = dnsUdp.available();
+	//Serial.print("packetSize\t");		Serial.println(packetSize);
+	//Serial.print("bytesInBuffer\t");		Serial.println(bytesInBuffer);
+	if ( packetSize > bytesInBuffer ) {
+		delay(2);
+	}
+	if ( bytesInBuffer < DNS_HEADER_SIZE) {
+		return TRUNCATED;
 	}
 
 	// Read through the rest of the response
-	if (dnsUdp.available() < DNS_HEADER_SIZE) {
-		return TRUNCATED;
-	}
 	dnsUdp.read(header.byte, DNS_HEADER_SIZE);
 
 	uint16_t header_flags = htons(header.word[1]);
@@ -303,7 +306,7 @@ uint16_t DNSClient::ProcessResponse(uint16_t iRequestId, IPAddress& aAddress)
 	if (answerCount == 0) {
 		// Mark the entire packet as read
 		dnsUdp.flush();
-		return INV_RESPONSE;
+		return NO_ANSWER;
 	}
 
 	// Skip over any questions
@@ -388,6 +391,6 @@ uint16_t DNSClient::ProcessResponse(uint16_t iRequestId, IPAddress& aAddress)
 	dnsUdp.flush();
 
 	// If we get here then we haven't found an answer
-	return NO_ANSWER;
+	return NO_VALID_ANSWER;
 }
 

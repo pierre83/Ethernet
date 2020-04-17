@@ -22,12 +22,9 @@
 #ifndef ethernet_h_
 	#error "Ethernet.h must be included before w5100.h"
 #endif
- 
-//  Higher SPI clock only results in faster transfer to hosts on a LAN
-//  or with very low packet latency.  With ordinary internet latency,
-//  the TCP window size & packet loss determine your overall speed.
 
-#if defined(__AVR__)
+// Default values, maybe not convenient for you: change as desired
+#if defined(__AVR__)	// Uno, Mega, Nano, etc..
 	// Safe for all chips
 	#define SPI_ETHERNET_SETTINGS SPISettings(14000000, MSBFIRST, SPI_MODE0)
 #elif defined(ESP8266)
@@ -37,7 +34,7 @@
 	// Settings for W5500, if W5100 use 14000000
 	// ESP32 master clock is divided from APB clock (80MHz), so only 80, 40, 26.6, 20, 16, 13.3, 11.4, 10 MHz and lower ...
 	#define SPI_ETHERNET_SETTINGS SPISettings(20000000, MSBFIRST, SPI_MODE0)
-#elif defined(__SAM3X8E__)
+#elif defined(__SAM3X8E__)	// Due
 	// Settings for W5500, if W5100 use 14000000
     #define SPI_ETHERNET_SETTINGS SPISettings(20000000, MSBFIRST, SPI_MODE0)
 #elif defined(ARDUINO_ARCH_ARC32)
@@ -49,7 +46,11 @@
 	// W5500 does seem to work at 12 MHz.  CHANGE this if using W5500
 	#define SPI_ETHERNET_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE0)
 #endif
-				   
+ 
+//  Higher SPI clock only results in faster transfer to hosts on a LAN
+//  or with very low packet latency.  With ordinary internet latency,
+//  the TCP window size & packet loss determine your overall speed.
+
 
 #if not defined(ESP8266)
 	#define htons(x) ( (((x)<<8)&0xFF00) | (((x)>>8)&0xFF) )

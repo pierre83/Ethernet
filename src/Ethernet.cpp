@@ -40,7 +40,9 @@ int EthernetClass::begin(uint8_t *mac, unsigned long timeout)//, unsigned long r
     _dhcp = &s_dhcp;
 
     // Initialise the basic network infos
-    if (W5100.init() == 0) return -1;		// W5x00 Init
+	if (W5100.init() == 0) {
+		return -1;		// W5x00 Init: fail, not found, etc..
+	}
     SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
     W5100.setMACAddress(mac);
     W5100.setIPAddress(IPAddress(0,0,0,0).raw_address());
@@ -99,7 +101,9 @@ int EthernetClass::begin(uint8_t *mac, IPAddress ip, IPAddress dns, IPAddress ga
 // ****************************************************************************
 int EthernetClass::begin(uint8_t *mac, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet)
 {
-    if (W5100.init() == 0) return -1;		// W5x00 Init
+    if (W5100.init() == 0) {
+		return -1;		// W5x00 Init
+	}
     setMACAddress(mac);
     setNetworkParameters( ip, dns, gateway, subnet);
     return 1;
@@ -123,14 +127,9 @@ void EthernetClass::setDHCPParameters()
 void EthernetClass::setNetworkParameters(IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet)
 {
     SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	// ESP8266
 	W5100.setIPAddress(ip.raw_address());
 	W5100.setGatewayIp(gateway.raw_address());
 	W5100.setSubnetMask(subnet.raw_address());
-	// AVR
-    //W5100.setIPAddress(ip._address.bytes);
-    //W5100.setGatewayIp(gateway._address.bytes);
-    //W5100.setSubnetMask(subnet._address.bytes);
     SPI.endTransaction();
     _dnsServerAddress = dns;
     // Initialize the "random" generator which will provide Ethernet ports number
